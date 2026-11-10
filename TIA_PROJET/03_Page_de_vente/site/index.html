@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Trading IA Academy : apprends à analyser les marchés avec méthode, une vraie gestion du risque et l'IA comme assistant de réflexion. Formation pédagogique, aucune promesse de gains.">
+<meta property="og:title" content="Trading IA Academy">
+<meta property="og:description" content="Apprends à analyser les marchés avec méthode, et l'IA comme copilote. 64 € en lancement, accès à vie, garantie 14 jours.">
+<meta property="og:image" content="img/hero.jpg">
+<meta property="og:type" content="website">
+<link rel="icon" href="logo.png">
+<title>Trading IA Academy</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout : colonne de lecture centrée, ponctuée de cartes « procédure » ; le halo bleu du logo TIA sert de fil lumineux. Look sombre assumé (identité TIA). */
+:root {
+  --bg: #04060d; --surface: #0b1020; --surface2: #0f1630; --line: #1c2544;
+  --fg: #eef2ff; --muted: #9aa6c7; --blue: #3f8cff; --blue2: #2f5fff; --glow: rgba(63,140,255,.35);
+  --ok: #34d399; --no: #f87171;
+  --display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 400 17px/1.65 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 960px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.15; }
+h3 { font-size: 1.12rem; }
+p { margin: 0; }
+.eyebrow { font: 500 .76rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--blue); }
+.lead { color: var(--muted); max-width: 64ch; font-size: 1.06rem; }
+section { padding-block: clamp(52px, 8vw, 96px); border-top: 1px solid var(--line); display: grid; gap: 24px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; font: 700 1.02rem/1 var(--body); color: #fff; text-decoration: none;
+  padding: 18px 26px; border-radius: 14px; background: linear-gradient(135deg, var(--blue), var(--blue2)); box-shadow: 0 10px 40px var(--glow); }
+.btn:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
+.note { font: 500 .82rem/1.4 var(--mono); color: var(--muted); }
+.risk { font-size: .82rem; color: var(--muted); max-width: 70ch; }
+
+.top { display: flex; align-items: center; gap: 12px; padding-block: 20px; }
+.top img { width: 44px; height: 44px; border-radius: 50%; }
+.top span { font: 700 1rem/1 var(--display); letter-spacing: .02em; }
+
+.hero { display: grid; gap: 22px; padding-block: clamp(36px, 7vw, 84px) clamp(52px, 8vw, 92px); text-align: center; justify-items: center; position: relative; }
+.hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(closest-side at 50% 38%, rgba(47,95,255,.22), transparent 70%); pointer-events: none; }
+.hero img { width: clamp(110px, 18vw, 150px); height: auto; border-radius: 50%; position: relative; }
+.hero h1 { font-size: clamp(2.1rem, 6vw, 3.8rem); line-height: 1.06; font-weight: 800; max-width: 18ch; position: relative; }
+.hero h1 em { font-style: normal; background: linear-gradient(90deg, #7cb4ff, var(--blue2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero .lead { margin: 0 auto; position: relative; }
+
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px; display: grid; gap: 10px; align-content: start; }
+.card .num { font: 500 .8rem/1 var(--mono); color: var(--blue); letter-spacing: .1em; }
+.card p { color: var(--muted); }
+
+.pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.pillar { background: var(--surface2); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 8px; }
+.pillar b { font-family: var(--display); }
+.pillar span { color: var(--muted); font-size: .95rem; }
+
+.modules { display: grid; gap: 14px; }
+.module { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; display: grid; grid-template-columns: 5.5ch minmax(0, 1fr); gap: 16px; }
+.module .n { font: 800 1.5rem/1 var(--display); color: var(--blue); }
+.module dl { margin: 10px 0 0; display: grid; gap: 6px; }
+.module dt { font: 500 .72rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--blue); margin-top: 6px; }
+.module dd { margin: 0; color: var(--muted); }
+
+.bonus { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+.bonus .card { border-color: rgba(63,140,255,.35); }
+
+.lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.lists ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lists li { padding-left: 28px; position: relative; }
+.lists .yes li::before { content: "✓"; position: absolute; left: 0; color: var(--ok); font-weight: 700; }
+.lists .no li::before { content: "✕"; position: absolute; left: 0; color: var(--no); font-weight: 700; }
+
+details { border-bottom: 1px solid var(--line); padding-block: 16px; }
+details:first-of-type { border-top: 1px solid var(--line); }
+summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+summary::after { content: "+"; font-family: var(--mono); color: var(--blue); }
+details[open] summary::after { content: "–"; }
+summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+details p { color: var(--muted); margin-top: 10px; max-width: 68ch; }
+
+.offer { background: linear-gradient(180deg, var(--surface2), var(--surface)); border: 1px solid rgba(63,140,255,.45); border-radius: 24px; padding: clamp(22px, 5vw, 44px); display: grid; gap: 20px; box-shadow: 0 20px 80px rgba(47,95,255,.15); }
+.offer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.offer li { padding-left: 28px; position: relative; }
+.offer li::before { content: "✓"; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
+.price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; }
+.price s { color: var(--muted); font-size: 1.3rem; }
+.price strong { font: 800 clamp(2.6rem, 8vw, 3.6rem)/1 var(--display); }
+.price span { color: var(--muted); }
+.guarantee { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: start; }
+.seal { width: 82px; height: 82px; border-radius: 50%; border: 2px solid var(--blue); display: grid; place-items: center; font: 800 1.4rem/1 var(--display); color: var(--blue); box-shadow: 0 0 30px var(--glow); }
+.shot { display: block; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 20px; border: 1px solid var(--line); box-shadow: 0 20px 70px rgba(47,95,255,.18); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: center; }
+@media (max-width: 760px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+footer { padding-block: 40px 60px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+@media (max-width: 760px) {
+  .cards, .lists, .choice { grid-template-columns: minmax(0, 1fr); }
+  .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body style="margin:0">
+
+
+<div class="wrap">
+  <header class="top"><img src="logo.png" alt="Logo Trading IA Academy"><span>Trading IA Academy</span></header>
+
+  <div class="hero">
+    <img src="logo.png" alt="">
+    <p class="eyebrow">Pour les débutants qui veulent apprendre sérieusement</p>
+    <h1>Apprends à analyser les marchés avec méthode, et <em>l'IA comme copilote.</em></h1>
+    <p class="lead">Trading IA Academy t'apprend une méthode structurée pour lire les marchés, gérer ton risque et prendre tes décisions seul, avec l'intelligence artificielle comme assistant de réflexion. Pas de signaux. Pas de promesses de gains. Une compétence qui t'appartient.</p>
+    <a class="btn" href="#offre">Je commence ma formation →</a>
+    <p class="note">Accès immédiat et à vie · 64 € au lieu de 97 € · Garantie 14 jours</p>
+    <p class="risk">Le trading comporte un risque de perte en capital. Contenu pédagogique, pas un conseil en investissement. Les performances passées ne préjugent pas des performances futures.</p>
+    <img class="shot" src="img/hero.jpg" alt="Un ordinateur portable et un téléphone sur un bureau, prêts pour une séance d'analyse" style="position:relative;max-width:820px">
+  </div>
+
+  <section>
+    <p class="eyebrow">Le problème</p>
+    <div class="split"><h2>Tu veux apprendre le trading. Mais plus tu cherches, plus c'est flou.</h2><img class="shot" src="img/probleme.jpg" alt="Une personne seule face à la ville, en pleine réflexion"></div>
+    <div class="cards">
+      <div class="card"><span class="num">01</span><h3>Trop d'avis contradictoires</h3><p>Une vidéo dit d'acheter, l'autre de vendre. Tu as plus d'informations que jamais, mais pas plus de clarté.</p></div>
+      <div class="card"><span class="num">02</span><h3>Des promesses irréalistes</h3><p>Captures de gains, voitures de luxe, « +300 % en un mois ». Si c'était aussi simple, tout le monde le ferait.</p></div>
+      <div class="card"><span class="num">03</span><h3>Des formations incompréhensibles</h3><p>Du jargon partout, des contenus pensés pour ceux qui savent déjà.</p></div>
+      <div class="card"><span class="num">04</span><h3>La peur de perdre</h3><p>Une peur légitime : celle de perdre de l'argent que tu as eu du mal à gagner.</p></div>
+    </div>
+    <p class="lead">Tu n'as pas besoin de plus d'informations. Tu as besoin d'un <strong>cadre</strong>.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Pourquoi la majorité échoue</p>
+    <h2>Ce n'est pas une question d'intelligence. C'est presque toujours l'une de ces 4 raisons.</h2>
+    <div class="cards">
+      <div class="card"><span class="num">AUCUNE MÉTHODE</span><p>On entre « parce que ça a l'air de monter ». Sans règles écrites, chaque décision est une improvisation.</p></div>
+      <div class="card"><span class="num">AUCUNE DISCIPLINE</span><p>Même avec un plan, on ne le suit pas. On change d'avis en cours de route, on déplace sa limite de perte.</p></div>
+      <div class="card"><span class="num">MAUVAISE GESTION DU RISQUE</span><p>Trop d'argent sur une seule position : un mauvais trade efface des semaines d'efforts.</p></div>
+      <div class="card"><span class="num">DÉCISIONS ÉMOTIONNELLES</span><p>Peur de rater une occasion, trade de « revanche », excès de confiance. Le marché punit le manque de contrôle.</p></div>
+    </div>
+    <p class="lead"><strong>La bonne nouvelle :</strong> ces 4 problèmes ne se règlent pas avec de la chance, mais avec de la méthode. Et ça s'apprend.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">La solution</p>
+    <h2>Trading IA Academy : la méthode d'abord, l'IA en soutien.</h2>
+    <img class="shot" src="img/methode.jpg" alt="Une personne qui travaille sur son ordinateur portable">
+    <div class="pillars">
+      <div class="pillar"><b>L'IA</b><span>Un assistant pour comprendre, structurer et critiquer ton plan. Jamais pour prédire le marché.</span></div>
+      <div class="pillar"><b>Les checklists</b><span>Les mêmes points de contrôle avant chaque décision. Fini l'improvisation.</span></div>
+      <div class="pillar"><b>Les procédures</b><span>Préparer, analyser, décider, suivre : chaque étape a sa marche à suivre.</span></div>
+      <div class="pillar"><b>L'analyse méthodique</b><span>Tu justifies chaque décision par écrit, avant d'agir.</span></div>
+    </div>
+    <p class="lead">L'objectif n'est pas de te donner des réponses. C'est de te rendre capable de trouver les tiennes.</p>
+    <a class="btn" href="#offre">Je veux une vraie méthode →</a>
+  </section>
+
+  <section>
+    <p class="eyebrow">La méthode propriétaire</p>
+    <h2>La Méthode DÉCISION : 8 étapes pour décider seul, avec l'IA comme copilote.</h2>
+    <p class="lead">Tu ne suis le signal de personne. À chaque séance, tu passes par les mêmes 8 étapes, toujours dans le même ordre.</p>
+    <div class="pillars"><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">D</b><b>Données</b><span>Rassembler le contexte avant toute analyse : calendrier économique, graphique sur 3 unités de temps, niveaux de la veille, état de ton journal.</span></div><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">É</b><b>Étude</b><span>Décrire objectivement ce que fait le marché (tendance, zones, volatilité) sans chercher à prédire.</span></div><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">C</b><b>Copilote IA</b><span>Faire structurer, questionner et critiquer ta lecture par l&#x27;IA avec des prompts fermés. L&#x27;IA ne donne jamais d&#x27;ordre d&#x27;achat ou de vente.</span></div><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">I</b><b>Inspection</b><span>Vérifier chaque affirmation de l&#x27;IA sur le graphique et les sources. Ce qui n&#x27;est pas vérifiable est écarté.</span></div><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">S</b><b>Sécurité</b><span>Fixer le risque en % du capital, le stop, la taille de position et les limites journalières AVANT d&#x27;entrer.</span></div><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">I</b><b>Intention</b><span>Écrire le plan du trade : raison, scénario si/alors, invalidation, sortie. Pas de plan écrit, pas de trade.</span></div><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">O</b><b>Observation</b><span>Noter chaque trade (y compris ceux qu&#x27;on n&#x27;a pas pris) : raison, respect du plan, émotion, résultat en R.</span></div><div class="pillar"><b style="font-size:1.6rem;color:var(--blue)">N</b><b>Nouvelle itération</b><span>Chaque semaine et chaque mois : relire, mesurer la discipline, corriger UNE règle à la fois.</span></div></div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Ce que contient la formation</p>
+    <h2>10 modules. Chaque leçon te laisse un outil.</h2>
+    <p class="lead">Chaque leçon suit le même format : théorie, démonstration vidéo, cas concret, exercice, template, prompt IA et quiz. Aucune leçon n'est seulement théorique.</p>
+    <div class="modules"><div class="module"><span class="n">M0</span><div><h3>Démarrage : installer ton cockpit</h3><dl><dt>Ce que tu apprends</dt><dd>Avoir tous tes outils prêts et comprendre la Méthode DÉCISION avant ta première séance.</dd><dt>Exercice</dt><dd>Coche la checklist « Installation des outils » et fais une capture de ton espace Notion et de ton classeur ouverts.</dd><dt>Tu repars avec</dt><dd>Classeur TIA (onglet Mode d&#x27;emploi) · Espace Notion TIA</dd></dl></div></div><div class="module"><span class="n">M1</span><div><h3>Les bases du trading</h3><dl><dt>Ce que tu apprends</dt><dd>Comprendre ce que tu trades, le levier, les coûts, et vérifier un intermédiaire.</dd><dt>Exercice</dt><dd>Ouvre ton compte démo après la checklist « Choisir un intermédiaire ». Note dans le journal : marché choisi, capital démo, levier maximum proposé, spread moyen observé.</dd><dt>Tu repars avec</dt><dd>Checklist « Choisir un intermédiaire » · Glossaire (annexe E)</dd></dl></div></div><div class="module"><span class="n">M2</span><div><h3>Comprendre le marché</h3><dl><dt>Ce que tu apprends</dt><dd>Décrire objectivement un graphique sur 3 unités de temps, sans prédire.</dd><dt>Exercice</dt><dd>Sur 3 graphiques historiques, remplis la fiche multi-UT (tendance, zones, phase), puis compare avec la correction de la vidéo.</dd><dt>Tu repars avec</dt><dd>Checklist multi-timeframe · Fiche de lecture (Notion)</dd></dl></div></div><div class="module"><span class="n">M3</span><div><h3>Gestion du risque</h3><dl><dt>Ce que tu apprends</dt><dd>Fixer ton risque, calculer ta taille de position et tes limites avant chaque trade.</dd><dt>Exercice</dt><dd>Fais 10 calculs de taille de position (énoncés en annexe F) dans l&#x27;onglet Plan de risque et compare avec les corrigés. Fixe tes limites jour/semaine dans ton plan.</dd><dt>Tu repars avec</dt><dd>Classeur TIA : onglet Plan de risque · Checklist gestion du risque</dd></dl></div></div><div class="module"><span class="n">M4</span><div><h3>L&#x27;IA comme copilote</h3><dl><dt>Ce que tu apprends</dt><dd>Utiliser l&#x27;IA pour structurer et critiquer ton analyse, et vérifier tout ce qu&#x27;elle dit.</dd><dt>Exercice</dt><dd>Fais critiquer une de tes analyses par l&#x27;IA (P35), puis trouve au moins 2 affirmations à vérifier et note le résultat de ta vérification.</dd><dt>Tu repars avec</dt><dd>Bibliothèque de prompts (Notion) · Checklists « Analyse avec l&#x27;IA » et « Vérification d&#x27;une réponse IA »</dd></dl></div></div><div class="module"><span class="n">M5</span><div><h3>Construire ton plan de trading</h3><dl><dt>Ce que tu apprends</dt><dd>Repartir avec ton plan de trading écrit, en règles vérifiables.</dd><dt>Exercice</dt><dd>Rédige ton plan v1 dans l&#x27;onglet Plan de trading, fais-le relire par P53, puis valide chaque règle toi-même (colonne « vérifiable »).</dd><dt>Tu repars avec</dt><dd>Classeur TIA : onglet Plan de trading · Checklist « Plan de trading complet » · Checklist « Avant d&#x27;ouvrir un trade »</dd></dl></div></div><div class="module"><span class="n">M6</span><div><h3>Psychologie et discipline</h3><dl><dt>Ce que tu apprends</dt><dd>Repérer tes biais et appliquer des règles qui te protègent de toi-même.</dd><dt>Exercice</dt><dd>Identifie ton biais n°1 à partir de tes 10 derniers trades (P86) et écris une règle d&#x27;arrêt chiffrée dans ton plan.</dd><dt>Tu repars avec</dt><dd>Checklists « Après une perte », « Après un gain », « État émotionnel » · Colonnes émotion du journal</dd></dl></div></div><div class="module"><span class="n">M7</span><div><h3>Journal et amélioration continue</h3><dl><dt>Ce que tu apprends</dt><dd>Tenir un journal utile et l&#x27;utiliser pour progresser chaque semaine.</dd><dt>Exercice</dt><dd>Tiens ton journal 2 semaines en démo, puis fais ta première revue hebdomadaire dans Notion ou Excel.</dd><dt>Tu repars avec</dt><dd>Classeur TIA : onglets Journal, Suivi des performances, Revue mensuelle · Checklist « Journal bien rempli »</dd></dl></div></div><div class="module"><span class="n">M8</span><div><h3>Ta routine : les workflows</h3><dl><dt>Ce que tu apprends</dt><dd>Appliquer la Méthode DÉCISION chaque jour, chaque semaine et chaque mois.</dd><dt>Exercice</dt><dd>Suis le workflow quotidien pendant 7 jours et coche chaque étape. Fais ta première préparation hebdomadaire.</dd><dt>Tu repars avec</dt><dd>Workflows imprimables (annexe C) · Onglet Préparation hebdo</dd></dl></div></div><div class="module"><span class="n">M9</span><div><h3>Études de cas</h3><dl><dt>Ce que tu apprends</dt><dd>Analyser des décisions à froid et rédiger ta propre étude de cas.</dd><dt>Exercice</dt><dd>Rédige ta propre étude de cas au format fixe à partir de ton journal (P100).</dd><dt>Tu repars avec</dt><dd>Fiche d&#x27;étude de cas (Notion) · Checklist « Revue d&#x27;étude de cas »</dd></dl></div></div>
+      <div class="module"><span class="n">✓</span><div><h3>Projet final et attestation</h3><dl><dd>Ton plan de trading, 30 jours de journal en démo, ta revue mensuelle et ta propre étude de cas. À la clé : l'attestation privée Trading IA Academy.</dd></dl></div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Inclus</p>
+    <div class="split"><h2>Une boîte à outils complète, utilisable dès le premier jour.</h2><img class="shot" src="img/journal.jpg" alt="Un carnet ouvert, comme un journal de trading"></div>
+    <div class="bonus"><div class="card"><span class="num">INCLUS</span><h3>100 prompts IA</h3><p>Classés par étape de la Méthode DÉCISION, chacun avec objectif, moment d&#x27;utilisation, exemple et vérification humaine.</p></div><div class="card"><span class="num">INCLUS</span><h3>20 checklists</h3><p>De la préparation de séance au passage en réel : avant un trade, après une perte, fin de journée, revue mensuelle…</p></div><div class="card"><span class="num">INCLUS</span><h3>Classeur Excel TIA</h3><p>Journal, plan de risque avec calcul automatique de la taille de position, suivi des performances, préparation hebdo, revue mensuelle, plan de trading.</p></div><div class="card"><span class="num">INCLUS</span><h3>Espace Notion TIA</h3><p>Tes prompts, checklists, journal et modules dans des bases prêtes à importer.</p></div><div class="card"><span class="num">INCLUS</span><h3>3 workflows</h3><p>Ta routine quotidienne, hebdomadaire et mensuelle, plus une version express de 15 minutes.</p></div><div class="card"><span class="num">INCLUS</span><h3>Fiches et exercices corrigés</h3><p>Glossaire, exercices de risque corrigés, quiz à chaque module, comparatif des outils IA.</p></div></div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Pour qui</p>
+    <img class="shot" src="img/routine.jpg" alt="Un poste de travail organisé, vu de dessus">
+    <div class="lists">
+      <div class="card yes"><h3>Cette formation est faite pour toi si…</h3><ul>
+        <li>Tu débutes et veux partir sur de bonnes bases</li><li>Tu as essayé seul et il te manque une méthode</li>
+        <li>Tu es fatigué des gourous et veux une approche honnête</li><li>Tu veux apprendre à utiliser l'IA intelligemment</li>
+        <li>Tu es prêt à apprendre, pratiquer et noter tes décisions</li><li>Tu veux développer ta propre réflexion</li></ul></div>
+      <div class="card no"><h3>Elle n'est pas faite pour toi si…</h3><ul>
+        <li>Tu cherches une méthode miracle</li><li>Tu veux devenir riche rapidement</li>
+        <li>Tu veux qu'on te dise quoi acheter</li><li>Tu refuses d'apprendre et de pratiquer</li>
+        <li>Tu comptes investir de l'argent dont tu as besoin</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Questions fréquentes</p>
+    <div>
+      <details><summary>Est-ce que je vais gagner de l'argent ?</summary><p>Personne ne peut te le promettre. Le trading comporte un risque réel de perte en capital. La formation t'apprend une méthode et la gestion du risque, sans garantie de résultat.</p></details>
+      <details><summary>Faut-il déposer de l'argent chez un courtier pour suivre la formation ?</summary><p>Non. Tu peux suivre toute la formation sans déposer un euro. C'est toi qui décides si et quand tu passes à la pratique réelle.</p></details>
+      <details><summary>Je suis grand débutant, est-ce pour moi ?</summary><p>Oui. Le module 0 t'aide à tout installer et le module 1 part de zéro.</p></details>
+      <details><summary>Donnez-vous des signaux d'achat ou de vente ?</summary><p>Non, jamais. C'est une formation pédagogique, pas un service de conseil en investissement.</p></details>
+      <details><summary>L'IA peut-elle trader à ma place ?</summary><p>Non. Ici, l'IA est un assistant de réflexion : elle explique, structure et critique. Les décisions restent les tiennes.</p></details>
+      <details><summary>Faut-il un abonnement ChatGPT payant ?</summary><p>La version gratuite suffit pour suivre la formation.</p></details>
+      <details><summary>Combien de temps faut-il y consacrer ?</summary><p>Tu avances à ton rythme : quelques heures pour l'ensemble des modules, puis un peu de temps chaque semaine pour pratiquer ta routine.</p></details>
+      <details><summary>Combien de temps ai-je accès à la formation ?</summary><p>À vie. Tu gardes l'accès à tous les modules, aux bonus et aux futures mises à jour, sans abonnement.</p></details>
+      <details><summary>Sur quels marchés la méthode s'applique-t-elle ?</summary><p>Elle est généraliste : les principes d'analyse, de risque et de discipline s'appliquent à la plupart des marchés.</p></details>
+      <details><summary>Faut-il être bon en maths ?</summary><p>Non. Les calculs de risque sont expliqués pas à pas, avec des modèles prêts à l'emploi.</p></details>
+      <details><summary>Sur quel appareil puis-je suivre la formation ?</summary><p>Ordinateur, tablette ou téléphone.</p></details>
+      <details><summary>Qui est le formateur ?</summary><p>Un trader qui pratique avec son propre argent depuis plusieurs années et tient un journal de chaque décision. Aucune capture de gains ici, volontairement : tu achètes une méthode, pas un résultat.</p></details>
+      <details><summary>Y a-t-il un support si je bloque ?</summary><p>Oui : une communauté privée d'élèves pour poser tes questions et échanger, plus le support par e-mail. Réservé aux 100 premiers inscrits.</p></details>
+      <details><summary>Comment fonctionne la garantie ?</summary><p>Tu as 14 jours pour être remboursé intégralement, sans justification.</p></details>
+      <details><summary>Y a-t-il une certification ?</summary><p>Oui, une attestation de fin de parcours Trading IA Academy. C'est une attestation privée, pas un diplôme reconnu par l'État.</p></details>
+    </div>
+  </section>
+
+  <section id="offre">
+    <p class="eyebrow">L'offre</p>
+    <div class="offer">
+      <h2>Tout ce que tu reçois aujourd'hui</h2>
+      <ul>
+        <li>Les 10 modules et la Méthode DÉCISION</li>
+        <li>La formation complète en PDF (39 pages) et les vidéos de démonstration</li>
+        <li>100 prompts IA · 20 checklists · 3 workflows</li>
+        <li>Le classeur Excel TIA et l'espace Notion TIA</li>
+        <li>Quiz, exercices corrigés et glossaire</li>
+        <li>L'accès à vie, mises à jour incluses</li>
+        <li>La communauté privée et le support par e-mail (100 premières places)</li>
+        <li>L'attestation de fin de parcours Trading IA Academy</li>
+      </ul>
+      <div class="price"><s>97 €</s><strong>64 €</strong><span>Offre de lancement · paiement unique</span></div>
+      <p class="lead">64 €, c'est souvent moins que ce qu'un débutant perd sur une seule position mal préparée. Ici, tu investis dans la compétence qui t'aide à éviter ce genre d'erreur.</p>
+      <a class="btn" id="cta-paiement" href="#offre">Je rejoins Trading IA Academy — 64 € →</a>
+      <div class="guarantee"><div class="seal">14 j</div><div><h3>Garantie « Méthode claire »</h3><p class="lead">Si, dans les 14 jours, tu estimes que la formation ne t'apporte pas une méthode plus claire et plus structurée, écris-nous : nous te remboursons intégralement, sans justification. Nous ne garantissons pas de gains, personne ne peut le faire honnêtement. Nous garantissons ta satisfaction sur ce que nous enseignons.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Pourquoi maintenant</p>
+    <div class="cards">
+      <div class="card"><h3>⏳ Prix de lancement : 100 places</h3><p>Le prix de 64 € est réservé aux 100 premiers élèves. Ensuite, la formation repasse à 97 €.</p></div>
+      <div class="card"><h3>👥 Support limité</h3><p>Ces 100 premiers élèves ont accès à la communauté privée et au support par e-mail. On limite le nombre de places pour que chaque question reçoive une vraie réponse.</p></div>
+    </div>
+    <p class="note">Pas de faux compte à rebours : quand les 100 places sont prises, le prix change. C'est tout.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Ton choix</p>
+    <div class="split"><h2>Tu as deux options.</h2><img class="shot" src="img/conclusion.jpg" alt="Une route qui s'ouvre sur la lumière"></div>
+    <div class="choice">
+      <div class="card"><h3>Continuer comme maintenant</h3><p>Passer d'une vidéo à l'autre, d'un indicateur à l'autre, d'une promesse à l'autre, en espérant qu'un jour tout devienne clair.</p></div>
+      <div class="card" style="border-color: rgba(63,140,255,.5)"><h3>Te donner un cadre</h3><p>Apprendre une méthode. Comprendre ton risque. Utiliser l'IA intelligemment. Et devenir capable de réfléchir par toi-même.</p></div>
+    </div>
+    <p class="lead">Personne ne peut te promettre des gains. Mais tu peux te promettre une chose : ne plus avancer à l'aveugle.</p>
+    <a class="btn" href="#offre">Je choisis la méthode — 64 € →</a>
+    <p class="note">Accès immédiat et à vie · Garantie 14 jours · Paiement unique</p>
+  </section>
+
+  <footer>
+    <div class="top" style="padding:0"><img src="logo.png" alt=""><span>Trading IA Academy</span></div>
+    <p class="risk"><strong>Avertissement :</strong> Trading IA Academy est une formation à visée pédagogique. Elle ne constitue ni un conseil en investissement, ni une recommandation personnalisée, ni une incitation à acheter ou vendre un instrument financier. Le trading comporte un risque élevé de perte en capital, pouvant aller jusqu'à la totalité de la somme investie. Les performances passées ne préjugent pas des performances futures. N'investis que ce que tu peux te permettre de perdre.</p>
+    <p class="note">Mentions légales · CGV · Contact : à compléter avant la mise en ligne.</p>
+    <p class="note">Photos : Alejandro Escamilla, Namphuong Van, Vadim Sherbakov, Glen Carrie (Unsplash).</p>
+  </footer>
+</div>
+
+</body>
+</html>
