@@ -1,0 +1,14 @@
+{
+  "name": "tia-remotion",
+  "private": true,
+  "scripts": { "studio": "remotion studio", "render": "remotion render TIATest out/tia_test.mp4 --codec h264" },
+  "dependencies": {
+    "@remotion/cli": "4.0.300",
+    "@remotion/google-fonts": "4.0.300",
+    "@remotion/transitions": "4.0.300",
+    "remotion": "4.0.300",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": { "typescript": "5.6.3", "@types/react": "18.3.12" }
+}
