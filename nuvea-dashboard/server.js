@@ -131,10 +131,10 @@ async function collect() {
     })
   ]);
 
-  const [systeme, budget] = await Promise.all([section(() => readSystemeIo(since)), section(readBudget)]);
+  const [systeme, budget, extras] = await Promise.all([section(() => readSystemeIo(since)), section(readBudget), section(readExtras)]);
 
   return { fetchedAt: new Date().toISOString(), periodStart: new Date(since * 1000).toISOString(),
-    refreshSeconds: REFRESH, account, charges, intents, sessions, products, balance, systeme, budget };
+    refreshSeconds: REFRESH, account, charges, intents, sessions, products, balance, systeme, budget, extras };
 }
 
 // --- systeme.io (lecture seule) ---
@@ -167,6 +167,11 @@ async function readSystemeIo(since) {
   const [courses, funnels] = await Promise.all([optional("/school/courses"), optional("/funnels")]);
   return { contacts: contacts.length, newContacts: recent.length, clients: clients.length,
     newClients: clients.filter(c => recent.includes(c)).length, courses, funnels };
+}
+
+// --- Relevés hors API : Beacons, TikTok via Beacons, calendrier Drive, fiche entreprise (data/extras.json, hors GitHub) ---
+async function readExtras() {
+  return JSON.parse(await readFile(join(ROOT, "data", "extras.json"), "utf8"));
 }
 
 // --- Budget perso : data/budget.json (jamais envoyé sur GitHub) ---

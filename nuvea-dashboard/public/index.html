@@ -41,6 +41,7 @@ button,select{font:inherit;color:inherit}
 .s-kpi .v.alert{color:var(--alert)}
 .s-perso{margin:8px 0 0;font-size:12px;display:flex;flex-wrap:wrap;gap:4px 12px;border-top:1px dashed var(--line);padding-top:7px}
 .s-perso b{font-variant-numeric:tabular-nums}
+#s-next:empty{display:none}#s-next{border-top:0;padding-top:0;margin-top:6px}
 .s-live{font-size:11px;color:var(--muted);margin:6px 0 0}
 
 #top{right:max(14px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));display:flex;gap:6px;padding:5px;align-items:center}
@@ -120,6 +121,7 @@ button,select{font:inherit;color:inherit}
       <div class="s-kpi"><div class="l">Panier moyen</div><div class="v" id="k-avg">—</div></div>
       <div class="s-kpi"><div class="l">Alertes</div><div class="v alert" id="k-al">—</div></div>
     </div>
+    <div class="s-perso" id="s-next"></div>
     <div class="s-perso" id="s-perso"></div>
     <p class="s-live" id="s-live"></p>
   </section>
@@ -190,10 +192,19 @@ function curSymbol(c){
 const N = (label, n, unit, sub) => ({label, n:n||0, unit:unit||"", sub});
 const T = (label, text, sub) => ({label, text, sub});
 
+const fmtSlot = x => `${x.d.toLocaleDateString("fr-FR", {weekday:"short", day:"numeric", month:"short"})} · ${x.at.slice(11, 16).replace(":", " h ")}`;
+function calInfo(ex){
+  if (!ex || !ex.calendar) return null;
+  const v = ex.calendar.videos.map(x => ({...x, d:new Date(x.at)})), now = new Date();
+  const next = v.filter(x => !x.fait && x.d >= now), last = v[v.length - 1];
+  return {v, fait:v.filter(x => x.fait).length, retard:v.filter(x => !x.fait && x.d < now).length, next,
+    vente:v.filter(x => x.type === "vente").length, prompt:v.filter(x => x.type === "prompt").length,
+    joursRestants:Math.max(0, Math.ceil((last.d - now) / 86400000))};
+}
 function buildItems(d){
   const ok = s => s && s.ok ? s : null;
   const ch = ok(d.charges), pi = ok(d.intents), se = ok(d.sessions), pr = ok(d.products), ba = ok(d.balance), ac = ok(d.account),
-        sio = ok(d.systeme), bu = ok(d.budget);
+        sio = ok(d.systeme), bu = ok(d.budget), ex = ok(d.extras), cal = calInfo(ex), bc = ex && ex.beacons, tk = ex && ex.tiktok, en = ex && ex.entreprise;
   CUR = curSymbol((ch && ch.currency) || (ba && ba.currency) || (ac && ac.currency));
   const err = s => s && !s.ok ? s.error : null;
   const enCours = (ch ? ch.pending : 0) + (pi ? pi.inProgress : 0);
@@ -269,18 +280,40 @@ function buildItems(d){
     shop:{eyebrow:"Terrasse", name:"Pages de paiement", range:true, status: se ? "ok" : "wait",
       stats:[N("Ouvertes",se&&se.created), N("Terminées",se&&se.completed), N("Conversion",se && se.created ? Math.round(se.completed/se.created*100) : 0,"%"), N("Expirées",se&&se.expired)],
       sections:[{title:"À savoir", text:"Compte les pages de paiement Stripe Checkout. Le bon de commande systeme.io encaisse aussi via Stripe."}]},
-    studio:{eyebrow:"Contenu", name:"Studio vidéo", range:false, status:"off",
-      stats:[N("Docs scripts et prompts",3), N("Vidéos écrites",52,"","script + description"), T("Plan de publication","Prêt","12 nov."), T("Vues mesurées","Non accessibles")],
-      sections:[{title:"Source", text:"Google Drive : « TIA - Scripts et descriptions des vidéos (52…) », « TIA - Plan de publication », « TIA - Calendrier de publication (v2) »."}], note:SNAP},
-    tiktok:{eyebrow:"Audience", name:"Antenne TikTok", range:false, status:"off",
-      stats:[N("Comptes publicitaires",0), N("Business Centers",0), N("Dépense pub",0,"€"), T("Vues organiques","Non accessibles")],
-      alerts:["Aucun compte publicitaire TikTok relié."], note:SNAP},
+    studio: cal ? {eyebrow:"Contenu", name:"Studio vidéo", range:false, status:"ok", snap:"Calendrier Drive, relu le 12 nov. 2026",
+      stats:[N("Vidéos prévues",cal.v.length,"","2 par jour"), N("Publiées",cal.fait,"",`sur ${cal.v.length}`),
+        cal.next[0] ? T("Prochaine vidéo",fmtSlot(cal.next[0]),`N°${cal.next[0].n}`) : T("Prochaine vidéo","—","calendrier terminé"), N("Jours de calendrier restants",cal.joursRestants,"j")],
+      sections:[{title:"Prochaines vidéos", items: cal.next.slice(0, 6).map(x => `${fmtSlot(x)} · N°${x.n} ${x.sujet} (${x.type === "vente" ? "vente, « Écris IA »" : "prompt offert"})`)},
+        {title:"Répartition", text:`${cal.vente} vidéos de vente (épingle « Écris IA ») et ${cal.prompt} prompts offerts (épingle « Écris PROMPT »).`}],
+      alerts: cal.retard ? [`${cal.retard} vidéo(s) prévue(s) pas encore marquée(s) comme publiée(s).`] : [], note:`Source : ${ex.calendar.source}.`}
+    : {eyebrow:"Contenu", name:"Studio vidéo", range:false, status:"off", stats:[T("Calendrier","Non lu")]},
+    tiktok: tk ? {eyebrow:"Audience", name:"Antenne TikTok", range:false, status: tk.connected ? "ok" : "off", snap:"Relevé Beacons du 12 nov. 2026",
+      stats:[N("Abonnés",tk.followers), N("Vidéos remontées",tk.postsSynced,"","via Beacons"),
+        cal && cal.next[0] ? T("Prochaine vidéo",fmtSlot(cal.next[0])) : T("Prochaine vidéo","—"), N("Comptes publicitaires",tk.adAccounts)],
+      sections:[{title:"Compte", text:`${tk.handle} relié à Beacons par la connexion officielle TikTok : abonnés, vues, likes, commentaires et partages remonteront après chaque publication.`},
+        {title:"Publicité", text:"Aucun compte publicitaire TikTok Ads pour l'instant (vérification d'entreprise en cours)."}],
+      note:`Source : ${tk.source}.`}
+    : {eyebrow:"Audience", name:"Antenne TikTok", range:false, status:"off", stats:[T("TikTok","Non lu")]},
+    kiosk: bc ? {eyebrow:"Lien en bio", name:"Kiosque Beacons", range:false, status:"ok", snap:"Relevé Beacons du 12 nov. 2026",
+      stats:[N("Visites de la page",bc.pageViews,"",bc.period), N("Clics vers la formation",bc.formationClicks),
+        N("Taux de clic",bc.pageViews ? Math.round(bc.linkClicks / bc.pageViews * 100) : 0,"%","clics ÷ visites"), N("Inscrits email",bc.emailSignups)],
+      sections:[{title:"Liens de la page", items: bc.links.map(l => `${l.title} · ${l.visible ? "visible" : "caché"} · ${l.clicks} clic${l.clicks > 1 ? "s" : ""}`)},
+        {title:"Adresse", text:bc.url}],
+      alerts: bc.alerts, note:`Source : ${bc.source}.`}
+    : {eyebrow:"Lien en bio", name:"Kiosque Beacons", range:false, status:"off", stats:[T("Beacons","Non lu")]},
+    mairie: en ? {eyebrow:"Entreprise", name:`Mairie · ${en.nom}`, range:false, status:"wait", snap:"Cockpit TIA, état au 11 nov. 2026",
+      stats:[T("Statut",en.statut), T("SIREN",en.siren), T("Immatriculée le",en.immatriculation),
+        N("Avancement",Math.round(en.avancement.faites / en.avancement.total * 100),"%",`${en.avancement.faites} tâches sur ${en.avancement.total}`)],
+      sections:[{title:"À faire avant la pub", items: en.todo.map(t => `${t.prio} : ${t.texte}`)},
+        {title:"Fiscalité", text:`TVA : ${en.tva}.`}, {title:"Code APE", text:`${en.ape}. ${en.apeNote}`}],
+      alerts: en.todo.filter(t => t.prio === "Priorité 1").map(t => t.texte), note:`Source : ${en.source}.`}
+    : {eyebrow:"Entreprise", name:"Mairie", range:false, status:"off", stats:[T("Entreprise","Non lu")]},
     mail:{eyebrow:"Courrier", name:"Boîte mail", range:false, status:"off",
       stats:[N("Emails de commande",0), N("Emails Stripe récents",2), T("Campagnes","Bloquées","domaine à authentifier"), N("Période lue",30,"j")],
       note:`${SNAP} Campagnes : ${COCKPIT}.`}
   };
 }
-const ORDER = ["overview","tower","shelves","counter","clients","trucks","funnel","home","safe","shop","studio","tiktok","mail"];
+const ORDER = ["overview","tower","shelves","counter","clients","trucks","funnel","kiosk","home","safe","shop","studio","tiktok","mairie","mail"];
 
 /* ---------- Comptage animé ---------- */
 const shown = new WeakMap(); let raf = 0;
@@ -319,7 +352,7 @@ function openCard(id, keep){
   const it = ITEMS[id]; if (!it || !it.name) return; selected = id;
   $("c-eye").textContent = it.eyebrow;
   $("c-title").textContent = it.name;
-  $("c-range").textContent = it.range ? rangeText() : (it.note === SNAP ? "Relevé du 12 nov. 2026" : (SNAPSHOT ? "Instantané des données" : "Mis à jour en direct"));
+  $("c-range").textContent = it.snap || (it.range ? rangeText() : (it.note === SNAP ? "Relevé du 12 nov. 2026" : (SNAPSHOT ? "Instantané des données" : "Mis à jour en direct")));
   const dl = $("c-stats"), prev = keep ? [...dl.querySelectorAll("dd > span")] : [];
   dl.innerHTML = ""; const targets = [];
   it.stats.forEach(s => {
@@ -371,6 +404,8 @@ function renderSummary(d){
     el.innerHTML = `<span></span>${unit ? " " + unit : ""}`; const s = el.firstChild; shown.set(s, summaryShown ? (+el.dataset.v || 0) : 0); el.dataset.v = v; return {el:s, to:v}; };
   const t = [set("k-ca", ch ? ch.gross : null, CUR), set("k-cl", ch ? ch.customers : null), set("k-avg", ch && ch.avg !== null ? ch.avg : null, CUR)].filter(Boolean);
   $("k-al").textContent = `⚠ ${alerts}`;
+  const ci = calInfo(d.extras && d.extras.ok ? d.extras : null);
+  $("s-next").innerHTML = ci && ci.next[0] ? `Prochaine vidéo TikTok : <b>${esc(fmtSlot(ci.next[0]))}</b> · ${esc(ci.next[0].sujet)}` : "";
   $("s-perso").innerHTML = bu ? `<span>Perso · compte <b>${esc(eur(bu.compteCourant))}</b></span><span>épargne <b>${esc(eur(bu.epargne))}</b></span><span>paie dans <b>${bu.daysToPay} j</b></span>` : "";
   const at = new Date(d.fetchedAt).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
   const src = [["Stripe", ["account","charges","intents","sessions","products","balance"].every(k => d[k].ok)], ["systeme.io", d.systeme.ok]];
@@ -564,7 +599,7 @@ ST.forEach(x => ST.forEach(z => {
 }));
 function lawn(x, z, w, d){ add(scene, B(w + .2, .1, d + .2), 0xC7BBA6, x, groundTop + .01, z, true); add(scene, B(w, .12, d), 0xA3B27C, x, groundTop + .03, z, true); }
 add(scene, B(6.4, .14, 4.2), 0xCDBFA8, 19, groundTop + .01, 19, true);
-[[-16,-16,5,5],[14.5,15,4,3],[-15,6,4,4],[16,-9,4,4],[-6.5,-6.5,2.6,2.6],[6.5,-6.5,2.6,2.6]].forEach(a => lawn(...a));
+[[14.5,15,4,3],[-15,6,4,4],[16.5,-5.2,4.4,3.6],[-6.5,-6.5,2.6,2.6],[6.5,-6.5,2.6,2.6]].forEach(a => lawn(...a));
 add(scene, B(6, .12, 3.8), new THREE.MeshStandardMaterial({color:lin(0x8DBAB6), roughness:.12, metalness:.1}), 19, groundTop + .04, 19, true);
 
 /* --- Quartier : maisons tout autour --- */
@@ -688,6 +723,65 @@ const safe = grp("safe", -15, 20.3);
   blob(safe, 2.4, 2.2); })();
 reg("safe");
 
+/* --- Mairie : fiche entreprise --- */
+const mairie = H(-17, -16.5, 8, 5, 2, 0, {id:"mairie", wall:"#F2E9DA", shutter:0xD97757, noChimney:true});
+(function(){ const g = mairie, z0 = 2.5, y0 = .15;
+  add(g, B(5.4, .25, 1.8), 0xE4D6BF, 0, y0 + .12, z0 + .9); add(g, B(5, .2, 1.5), 0xEDE2CF, 0, y0 + .32, z0 + .8);
+  [-2, -.7, .7, 2].forEach(x => add(g, Cy(.18, .2, 3.1, 12), 0xF7F1E6, x, y0 + 1.95, z0 + 1.3));
+  add(g, B(5, .35, .7), 0xEDE2CF, 0, y0 + 3.65, z0 + 1.2);
+  const tri = new THREE.Shape(); tri.moveTo(-2.6, 0); tri.lineTo(2.6, 0); tri.lineTo(0, 1.1); tri.closePath();
+  const ped = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, {depth:.6, bevelEnabled:false}), M(0xF7F1E6)); ped.position.set(0, y0 + 3.82, z0 + .9); ped.castShadow = true; g.add(ped);
+  const clock = add(g, Cy(.36, .36, .06, 20), 0xFFFBF4, 0, y0 + 4.25, z0 + 1.52); clock.rotation.x = Math.PI/2;
+  add(g, B(.04, .26, .02), 0x2F2C29, 0, y0 + 4.33, z0 + 1.56, true); add(g, B(.2, .04, .02), 0x2F2C29, .08, y0 + 4.25, z0 + 1.56, true);
+  add(g, Cy(.05, .05, 3.2, 6), 0x2F2C29, 3.2, y0 + 5.1, z0 - .4); add(g, B(1.1, .65, .04), 0xD97757, 3.75, y0 + 6.3, z0 - .4);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3, .55), new THREE.MeshBasicMaterial({map:signTex("Mairie · TIA", "#FFFBF4", "#3B3631", 66)}));
+  sign.position.set(0, y0 + 3.65, z0 + 1.56); g.add(sign);
+})();
+reg("mairie");
+
+/* --- Kiosque Beacons : le lien en bio --- */
+const kiosk = grp("kiosk", 16.3, -5.6);
+(function(){ const y0 = .15;
+  add(kiosk, Cy(1.4, 1.5, .25, 6), 0xE4D6BF, 0, y0 + .12, 0);
+  add(kiosk, Cy(1.3, 1.3, .8, 6), 0xF2E9DA, 0, y0 + .65, 0);
+  add(kiosk, new THREE.CylinderGeometry(1.32, 1.32, 1.1, 6, 1, true), glassWarm, 0, y0 + 1.6, 0);
+  add(kiosk, Cy(1.1, 1.1, 1.08, 6), 0xF7F1E6, 0, y0 + 1.6, 0);
+  add(kiosk, Cy(1.5, 1.5, .2, 6), 0xD97757, 0, y0 + 2.25, 0);
+  add(kiosk, new THREE.ConeGeometry(1.75, 1.3, 6), 0xC65F3F, 0, y0 + 3.0, 0);
+  add(kiosk, new THREE.SphereGeometry(.16, 10, 8), 0xD9B45A, 0, y0 + 3.75, 0);
+  const board = grp(null, 1.7, 1.7, kiosk); board.rotation.y = Math.PI/4;
+  [-.9, .9].forEach(x => add(board, Cy(.04, .04, 1.9, 6), 0x2F2C29, x, y0 + .95, 0));
+  add(board, B(2.1, .75, .08), 0x3B3631, 0, y0 + 1.65, -.02);
+  const t = new THREE.Mesh(new THREE.PlaneGeometry(1.95, .6), new THREE.MeshBasicMaterial({map:signTex("beacons.ai/tradingauto", "#FAE8D8", "#725A53", 46)}));
+  t.position.set(0, y0 + 1.65, .03); board.add(t);
+  blob(kiosk, 4, 4);
+})();
+reg("kiosk");
+
+/* --- Panneau « prochaine vidéo » devant le studio --- */
+const billCanvas = document.createElement("canvas"); billCanvas.width = 1024; billCanvas.height = 512;
+const billTex = new THREE.CanvasTexture(billCanvas); billTex.encoding = THREE.sRGBEncoding; billTex.anisotropy = 8;
+function drawBillboard(ci){
+  const x = billCanvas.getContext("2d"), W = 1024, Hh = 512;
+  x.fillStyle = "#1F1E1D"; x.fillRect(0, 0, W, Hh); x.fillStyle = "#D97757"; x.fillRect(0, 0, W, 16);
+  x.fillStyle = "#E08A6B"; x.font = "600 44px Georgia, serif"; x.fillText("PROCHAINE VIDÉO TIKTOK", 48, 92);
+  x.fillStyle = "#F4F1EA";
+  if (ci && ci.next[0]){ const v = ci.next[0];
+    x.font = "700 64px Georgia, serif"; x.fillText(fmtSlot(v), 48, 190);
+    x.font = "500 50px Arial, sans-serif"; const words = `N°${v.n} · ${v.sujet}`.split(" "); let line = "", y = 290;
+    words.forEach(w => { if (x.measureText(line + w).width > W - 96){ x.fillText(line, 48, y); line = ""; y += 62; } line += w + " "; }); x.fillText(line, 48, y);
+    x.fillStyle = "#A8A49A"; x.font = "500 36px Arial, sans-serif"; x.fillText(`${ci.fait} publiée(s) sur ${ci.v.length} · ${v.type === "vente" ? "épingle « IA »" : "épingle « PROMPT »"}`, 48, 470);
+  } else { x.font = "600 54px Georgia, serif"; x.fillText("Calendrier en attente", 48, 220); }
+  billTex.needsUpdate = true;
+}
+drawBillboard(null);
+const billboard = grp("billboard", -14.6, 6.2);
+billboard.rotation.y = Math.PI/4;
+[-1.9, 1.9].forEach(x => add(billboard, B(.2, 3.2, .2), 0x2F2C29, x, 1.75, 0));
+add(billboard, B(4.4, 2.4, .2), 0x2F2C29, 0, 3.1, -.06);
+(function(){ const sc = new THREE.Mesh(new THREE.PlaneGeometry(4.1, 2.05), new THREE.MeshBasicMaterial({map:billTex})); sc.position.set(0, 3.1, .06); billboard.add(sc); })();
+reg("studio", billboard);
+
 /* --- Boîte aux lettres --- */
 const mail = grp("mail", 7.3, 4.5);
 (function(){ add(mail, Cy(.06,.06,1.3,6), 0x2F2C29, 0, .8, 0); add(mail, B(.95,.7,.65), 0xD97757, 0, 1.7, 0); add(mail, B(.6,.08,.05), 0x2F2C29, 0, 1.8, .34); })();
@@ -738,7 +832,7 @@ function buildClients(d){
 /* --- Alertes : triangle rouge flottant --- */
 const ALERT_MAT = new THREE.SpriteMaterial({map:tex((x, w, h) => { x.fillStyle = "#C8442F"; x.beginPath(); x.moveTo(64, 10); x.lineTo(120, 112); x.lineTo(8, 112); x.closePath(); x.fill();
   x.fillStyle = "#fff"; x.font = "bold 70px Arial"; x.textAlign = "center"; x.fillText("!", 64, 102); }, 128, 128), depthTest:false});
-const ALERT_AT = {shelves:[-4.5,4.2,0], counter:[-1.6,3,-3.2], tiktok:[-21.2,10.5,-5], overview:[0,5.8,-.8], funnel:[10,6.2,5], home:[-20,7.6,20], safe:[-15,3.4,20.3]};
+const ALERT_AT = {kiosk:[16.3,5,-5.6], mairie:[-17,8.2,-16.5], studio:[-20,6.6,-3], shelves:[-4.5,4.2,0], counter:[-1.6,3,-3.2], tiktok:[-21.2,10.5,-5], overview:[0,5.8,-.8], funnel:[10,6.2,5], home:[-20,7.6,20], safe:[-15,3.4,20.3]};
 const markers = {};
 function updateAlerts(){
   for (const id in ALERT_AT){
@@ -747,7 +841,7 @@ function updateAlerts(){
     if (!has && markers[id]){ scene.remove(markers[id]); delete markers[id]; }
   }
 }
-function updateWorld(d){ buildClients(d); updateAlerts(); }
+function updateWorld(d){ buildClients(d); updateAlerts(); drawBillboard(calInfo(d.extras && d.extras.ok ? d.extras : null)); }
 
 /* =====================================================================
    LUMIÈRE : jour / soir, allumage progressif des fenêtres

@@ -1,0 +1,50 @@
+{
+ "readAt": "",
+ "beacons": {
+  "source": "",
+  "url": "",
+  "period": "",
+  "pageViews": 0,
+  "linkClicks": 0,
+  "formationClicks": 0,
+  "emailSignups": 0,
+  "storeOrders": 0,
+  "links": [],
+  "alerts": []
+ },
+ "tiktok": {
+  "source": "",
+  "handle": "",
+  "connected": false,
+  "followers": 0,
+  "postsSynced": 0,
+  "adAccounts": 0
+ },
+ "calendar": {
+  "source": "",
+  "videos": [
+   {
+    "n": "01",
+    "at": "2026-01-01T12:30:00",
+    "sujet": "Exemple",
+    "type": "vente",
+    "fait": false
+   }
+  ]
+ },
+ "entreprise": {
+  "source": "",
+  "nom": "",
+  "statut": "",
+  "siren": "",
+  "immatriculation": "",
+  "ape": "",
+  "tva": "",
+  "avancement": {
+   "faites": 0,
+   "total": 0
+  },
+  "todo": [],
+  "apeNote": ""
+ }
+}

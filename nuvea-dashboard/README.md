@@ -29,7 +29,7 @@ npm run start:cloud
 - Le serveur garde le résultat en cache pendant la période de rafraîchissement (`REFRESH_SECONDS`, 60 par défaut).
 - systeme.io (lecture seule) : nombre de contacts, nouveaux contacts sur 30 jours, contacts avec le tag CLIENT, formations.
 - Budget perso (`data/budget.json`) : compte, épargne, salaire, jours avant la paie, charges, reste à vivre et projection mois par mois jusqu'à `finProjection` (dès que toutes les charges sont remplies).
-- TikTok, mail et studio ne sont pas reliés : leurs cartes affichent un relevé fixe du 12 nov. 2026.
+- Relevés hors API (`data/extras.json`, ignoré par git, voir `data/extras.example.json`) : Beacons (visites, clics vers la formation, liens), TikTok via Beacons (abonnés, vidéos), calendrier de publication Drive (prochaine vidéo affichée sur le panneau), fiche entreprise et tâches du Cockpit TIA. Ils sont mis à jour à la main, pas toutes les minutes.
 
 ## Instantané à partager
 
