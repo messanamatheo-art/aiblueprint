@@ -30,3 +30,7 @@ npm run start:cloud
 - systeme.io (lecture seule) : nombre de contacts, nouveaux contacts sur 30 jours, contacts avec le tag CLIENT, formations.
 - Budget perso (`data/budget.json`) : compte, épargne, salaire, jours avant la paie, charges, reste à vivre et projection mois par mois jusqu'à `finProjection` (dès que toutes les charges sont remplies).
 - TikTok, mail et studio ne sont pas reliés : leurs cartes affichent un relevé fixe du 12 nov. 2026.
+
+## Instantané à partager
+
+Le serveur lancé, `node snapshot.js snapshot.html` écrit une page autonome avec les chiffres du moment (sans serveur, sans mise à jour). Ce fichier contient ton budget : il est ignoré par git.

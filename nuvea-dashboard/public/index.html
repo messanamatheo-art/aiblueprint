@@ -169,6 +169,7 @@ const dLong = iso => new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLo
 const COCKPIT = "Cockpit TIA, relevé du 11 nov. 2026";
 const SNAP = "Relevé du 12 nov. 2026, hors Stripe.";
 let DATA = null, ITEMS = {}, selected = null;
+const SNAPSHOT = window.__SNAPSHOT__ || null; // instantané figé (lien claude.ai), sinon données en direct
 
 function curSymbol(c){
   if (!c) return "€";
@@ -307,7 +308,7 @@ function openCard(id, keep){
   const it = ITEMS[id]; if (!it || !it.name) return; selected = id;
   $("c-eye").textContent = it.eyebrow;
   $("c-title").textContent = it.name;
-  $("c-range").textContent = it.range ? rangeText() : (it.note === SNAP ? "Relevé du 12 nov. 2026" : "Mis à jour en direct");
+  $("c-range").textContent = it.range ? rangeText() : (it.note === SNAP ? "Relevé du 12 nov. 2026" : (SNAPSHOT ? "Instantané des données" : "Mis à jour en direct"));
   const dl = $("c-stats"), prev = keep ? [...dl.querySelectorAll("dd > span")] : [];
   dl.innerHTML = ""; const targets = [];
   it.stats.forEach(s => {
@@ -361,15 +362,16 @@ function renderSummary(d){
   $("s-perso").innerHTML = bu ? `<span>Perso · compte <b>${esc(eur(bu.compteCourant))}</b></span><span>épargne <b>${esc(eur(bu.epargne))}</b></span><span>paie dans <b>${bu.daysToPay} j</b></span>` : "";
   const at = new Date(d.fetchedAt).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
   const src = [["Stripe", ["account","charges","intents","sessions","products","balance"].every(k => d[k].ok)], ["systeme.io", d.systeme.ok]];
-  $("s-live").innerHTML = src.map(([n, ok]) => `<b style="color:${ok ? "var(--ok)" : "var(--alert)"}">●</b> ${n} ${ok ? "en direct" : "non lu"}`).join(" · ") + ` · mis à jour à ${at}`;
+  const day = new Date(d.fetchedAt).toLocaleDateString("fr-FR", {day:"numeric", month:"short"});
+  $("s-live").innerHTML = src.map(([n, ok]) => `<b style="color:${ok ? "var(--ok)" : "var(--alert)"}">●</b> ${n} ${ok ? (SNAPSHOT ? "lu" : "en direct") : "non lu"}`).join(" · ") + (SNAPSHOT ? ` · instantané du ${day} à ${at}` : ` · mis à jour à ${at}`);
   if (!selected) countUp(t); else t.forEach(x => x.el.textContent = nf(x.to, x.to % 1 ? 2 : 0));
   summaryShown = true;
 }
 async function refresh(){
   try {
-    const r = await fetch("/api/stats", {cache:"no-store"});
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    DATA = await r.json(); ITEMS = buildItems(DATA);
+    if (SNAPSHOT) DATA = SNAPSHOT;
+    else { const r = await fetch("/api/stats", {cache:"no-store"}); if (!r.ok) throw new Error(`HTTP ${r.status}`); DATA = await r.json(); }
+    ITEMS = buildItems(DATA);
     $("err").hidden = true;
     if ($("pickEl").options.length === 1) ORDER.forEach(id => { const o = document.createElement("option"); o.value = id; o.textContent = ITEMS[id].name; $("pickEl").appendChild(o); });
     renderSummary(DATA); updateWorld(DATA);
@@ -821,7 +823,7 @@ function frame(now){
 
 ITEMS = Object.fromEntries(ORDER.map(id => [id, {status:"off"}]));
 buildClients(null); resize(); requestAnimationFrame(frame);
-refresh(); setInterval(refresh, 60000);
+refresh(); if (!SNAPSHOT) setInterval(refresh, 60000);
 </script>
 </body>
 </html>
