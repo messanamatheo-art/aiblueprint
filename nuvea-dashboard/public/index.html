@@ -112,18 +112,6 @@ button,select{font:inherit;color:inherit}
 <div id="app">
   <canvas id="gl" aria-label="Ville 3D de Nuvéa. Le menu « Tous les éléments » ouvre les mêmes cartes au clavier."></canvas>
 
-  <section class="panel" id="summary" aria-label="Résumé">
-    <div class="s-range" id="s-range">Lecture des données…</div>
-    <div class="s-kpis">
-      <div class="s-kpi"><div class="l">Chiffre d'affaires</div><div class="v" id="k-ca">—</div></div>
-      <div class="s-kpi"><div class="l">Clients</div><div class="v" id="k-cl">—</div></div>
-      <div class="s-kpi"><div class="l">Panier moyen</div><div class="v" id="k-avg">—</div></div>
-      <div class="s-kpi"><div class="l">Alertes</div><div class="v alert" id="k-al">—</div></div>
-    </div>
-    <div class="s-perso" id="s-next"></div>
-    <div class="s-perso" id="s-perso"></div>
-    <p class="s-live" id="s-live"></p>
-  </section>
 
   <div class="panel" id="top">
     <select id="pickEl" aria-label="Ouvrir la carte d'un élément"><option value="">Tous les éléments</option></select>
@@ -397,6 +385,7 @@ $("pickEl").onchange = e => e.target.value ? openCard(e.target.value) : closeCar
 
 let summaryShown = false;
 function renderSummary(d){
+  if (!$("summary")) return; // panneau de résumé retiré à la demande
   const ch = d.charges.ok ? d.charges : null, bu = d.budget.ok ? d.budget : null;
   const alerts = ORDER.reduce((n, id) => n + ((ITEMS[id].alerts || []).length), 0);
   $("s-range").textContent = rangeText();
