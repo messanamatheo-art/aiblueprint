@@ -348,7 +348,8 @@ function openCard(id, keep){
   $("pickEl").value = id;
   if (!keep) focusOn(id);
 }
-function closeCard(){ selected = null; $("card").classList.remove("open"); $("pickEl").value = ""; }
+function closeCard(){ selected = null; $("card").classList.remove("open"); $("pickEl").value = "";
+  if (prevView){ const v = prevView; prevView = null; tween(v.t, v.z, v.p); } } // revient à la vue d'avant le clic
 $("close").onclick = closeCard;
 addEventListener("keydown", e => { if (e.key === "Escape") closeCard(); });
 $("pickEl").onchange = e => e.target.value ? openCard(e.target.value) : closeCard();
@@ -776,17 +777,18 @@ function paint(t, dt){
 function resize(){ const w = innerWidth, h = innerHeight, half = w < 700 ? 22 : 17, a = w / h;
   renderer.setSize(w, h, false); cam.left = -half*a; cam.right = half*a; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix(); }
 addEventListener("resize", resize);
-let camAnim = null;
+let camAnim = null, prevView = null;
 function tween(target, zoom, pos){ const to = {t:target.clone(), z:zoom, p:pos ? pos.clone() : null};
   if (reduce){ controls.target.copy(to.t); cam.zoom = to.z; if (to.p) cam.position.copy(to.p); cam.updateProjectionMatrix(); return; }
   camAnim = {t0:performance.now(), fT:controls.target.clone(), fZ:cam.zoom, fP:cam.position.clone(), ...to}; }
 function focusOn(id){ const c0 = focusCenter[id]; if (!c0) return; const c = c0.clone();
+  if (!prevView) prevView = {t:controls.target.clone(), z:cam.zoom, p:cam.position.clone()};
   tween(c, Math.max(cam.zoom, 2.1), c.clone().add(cam.position.clone().sub(controls.target))); }
 function orbit(angle){ const off = cam.position.clone().sub(controls.target); off.applyAxisAngle(new THREE.Vector3(0,1,0), angle); tween(controls.target, cam.zoom, controls.target.clone().add(off)); }
 $("rotL").onclick = () => orbit(Math.PI/4); $("rotR").onclick = () => orbit(-Math.PI/4);
 $("zin").onclick = () => tween(controls.target, Math.min(controls.maxZoom, cam.zoom*1.3));
 $("zout").onclick = () => tween(controls.target, Math.max(controls.minZoom, cam.zoom/1.3));
-$("home").onclick = () => { closeCard(); tween(HOME.target, HOME.zoom, HOME.pos); };
+$("home").onclick = () => { closeCard(); prevView = null; tween(HOME.target, HOME.zoom, HOME.pos); };
 
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = $("tip");
 let hovered = null, down = null;
