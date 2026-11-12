@@ -1,0 +1,8 @@
+{
+  "name": "nuvea-monde",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.js",
+    "start:cloud": "NODE_USE_ENV_PROXY=1 node server.js" },
+  "engines": { "node": ">=18" }
+}

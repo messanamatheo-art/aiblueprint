@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nuvéa Monde</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;1,8..60,500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+/* Plein écran : la ville occupe toute la fenêtre, quatre panneaux flottent par-dessus
+   (résumé en haut à gauche, carte à droite, aide en bas à gauche, outils en bas à droite).
+   Palette Claude : crème, orange, terre cuite, gris chaud. Un seul look clair, assumé. */
+:root{
+  color-scheme:light;
+  --bg:#F4F1EA; --panel:rgba(255,253,249,.94); --solid:#FFFDF9; --fg:#1F1E1D; --muted:#6F6A61; --line:#E6DFD2;
+  --accent:#D97757; --accent-strong:#B9583A; --accent-soft:#FBEDE6; --alert:#C8442F; --alert-soft:#FCE9E4;
+  --ok:#4F7A4A; --morning:#3F7FC1; --noon:#D9583C; --evening:#4E9A62;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --f-display:"Source Serif 4",Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 var(--f-body);overflow:hidden}
+#app{position:relative;height:100%;background:radial-gradient(130% 100% at 50% 0%,#FBF4EC 0%,#EFE8DC 70%);transition:background 1s}
+#app.night{background:radial-gradient(130% 100% at 50% 0%,#3A3330 0%,#211E1C 75%)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#gl.over{cursor:pointer}#gl.drag{cursor:grabbing}
+.panel{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 8px 28px rgba(60,40,25,.12);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Résumé */
+#summary{left:max(14px,env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:12px 14px;max-width:min(470px,calc(100% - 28px))}
+.s-head{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px}
+.s-dot{width:9px;height:9px;border-radius:2px;background:var(--accent)}
+.s-range{color:var(--muted);font-size:11.5px;margin:1px 0 9px 16px}
+.s-kpis{display:grid;grid-template-columns:repeat(4,auto);gap:6px}
+.s-kpi{border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:var(--solid);min-width:0}
+.s-kpi .l{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.s-kpi .v{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.s-kpi .v.alert{color:var(--alert)}
+.s-live{font-size:11px;color:var(--muted);margin:8px 0 0}
+.s-live b{color:var(--ok);font-weight:600}
+
+/* Barre du haut à droite */
+#top{right:max(14px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));display:flex;gap:6px;padding:5px;align-items:center}
+#pickEl{border:1px solid var(--line);background:var(--solid);border-radius:8px;padding:5px 8px;font-size:12.5px;max-width:180px}
+.seg{display:flex;background:#EFE9DE;border-radius:8px;padding:2px}
+.seg button{border:0;background:none;font-size:12px;padding:4px 9px;border-radius:6px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+
+/* Carte de statistiques */
+#card{right:max(14px,env(safe-area-inset-right,0px));top:calc(64px + env(safe-area-inset-top,0px));bottom:calc(64px + env(safe-area-inset-bottom,0px));
+  width:min(330px,calc(100% - 28px));padding:16px;overflow:auto;opacity:0;transform:translateX(12px);pointer-events:none;transition:opacity .25s,transform .25s}
+#card.open{opacity:1;transform:none;pointer-events:auto}
+.eyebrow{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent-strong);font-weight:600}
+#card h2{font:600 1.35rem/1.15 var(--f-display);margin:3px 30px 2px 0}
+.c-range{font-size:11.5px;color:var(--muted);margin:0 0 12px}
+#close{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--solid);cursor:pointer;font-size:15px;line-height:1}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+.st{background:var(--solid);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-width:0}
+.st dt{font-size:11px;color:var(--muted)}
+.st dd{margin:1px 0 0;font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.st dd small{font-size:.75rem;color:var(--muted);font-weight:500;margin-left:2px}
+.st dd.txt{font-size:.95rem;padding-top:3px}
+.st .sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.sec{margin-top:14px}
+.sec h3{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:600}
+.spark{width:100%;height:64px;display:block}
+.spark-axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:2px}
+.lines{font-size:12.5px;margin:6px 0 0;padding:0;list-style:none}
+.lines li{margin:2px 0}
+.txtsec{font-size:12.5px;color:var(--fg);margin:0}
+.alertbox{background:var(--alert-soft);border-radius:9px;padding:9px 11px;font-size:12.5px}
+.alertbox h3{color:var(--alert)}
+.alertbox ul{margin:0;padding-left:16px}
+.next{margin-top:12px;background:var(--accent-soft);border-radius:9px;padding:9px 11px;font-size:12.5px}
+
+/* Aide et légende */
+#help{left:max(14px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:7px 11px;font-size:11.5px;color:var(--muted);max-width:calc(100% - 200px)}
+#help b{color:var(--fg);font-weight:600}
+.lg{display:flex;gap:10px;flex-wrap:wrap;margin-top:3px}
+.lg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:0}
+
+/* Outils */
+#tools{right:max(14px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:3px;padding:4px}
+#tools button{width:32px;height:30px;border:0;background:none;border-radius:7px;cursor:pointer;font-size:15px}
+#tools button:hover{background:#EFE9DE}
+
+/* Infobulle */
+#tip{position:absolute;pointer-events:none;background:#2A2724;color:#FBF6EF;font-size:11.5px;padding:5px 8px;border-radius:7px;white-space:nowrap;transform:translate(12px,-120%);opacity:0;transition:opacity .12s}
+#tip.on{opacity:1}#tip span{opacity:.7;margin-left:6px}
+
+#err{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:8px 12px;background:var(--alert-soft);color:var(--alert);font-size:12.5px}
+
+@media (max-width:760px){
+  #summary{padding:10px}
+  .s-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #top{top:auto;bottom:calc(58px + env(safe-area-inset-bottom,0px))}
+  #card{top:auto;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));width:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:62%}
+  #help{display:none}
+}
+@media (prefers-reduced-motion:reduce){#card{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl" aria-label="Ville 3D de Nuvéa. Le menu « Tous les éléments » ouvre les mêmes cartes au clavier."></canvas>
+
+  <section class="panel" id="summary" aria-label="Résumé des 30 derniers jours">
+    <div class="s-head"><span class="s-dot"></span>Nuvéa · 30 derniers jours</div>
+    <div class="s-range" id="s-range">Lecture de Stripe…</div>
+    <div class="s-kpis">
+      <div class="s-kpi"><div class="l">Chiffre d'affaires</div><div class="v" id="k-ca">—</div></div>
+      <div class="s-kpi"><div class="l">Clients</div><div class="v" id="k-cl">—</div></div>
+      <div class="s-kpi"><div class="l">Panier moyen</div><div class="v" id="k-avg">—</div></div>
+      <div class="s-kpi"><div class="l">Alertes</div><div class="v alert" id="k-al">—</div></div>
+    </div>
+    <p class="s-live" id="s-live"></p>
+  </section>
+
+  <div class="panel" id="top">
+    <label for="pickEl" class="sr" hidden>Élément</label>
+    <select id="pickEl" aria-label="Ouvrir la carte d'un élément"><option value="">Tous les éléments</option></select>
+    <div class="seg" role="group" aria-label="Lumière">
+      <button data-light="auto" aria-pressed="true">Auto</button>
+      <button data-light="day" aria-pressed="false">Jour</button>
+      <button data-light="night" aria-pressed="false">Soir</button>
+    </div>
+  </div>
+
+  <section class="panel" id="card" aria-live="polite">
+    <button id="close" aria-label="Fermer la carte">×</button>
+    <div class="eyebrow" id="c-eye"></div>
+    <h2 id="c-title"></h2>
+    <p class="c-range" id="c-range"></p>
+    <dl class="grid" id="c-stats"></dl>
+    <div id="c-extra"></div>
+  </section>
+
+  <div class="panel" id="help">
+    <div><b>Glisser</b> tourner · <b>Clic droit</b> déplacer · <b>Molette</b> zoomer · <b>Clic</b> statistiques</div>
+    <div class="lg">Clients : <span><i style="background:var(--morning)"></i>matin</span><span><i style="background:var(--noon)"></i>midi</span><span><i style="background:var(--evening)"></i>après-midi</span></div>
+  </div>
+
+  <div class="panel" id="tools" role="group" aria-label="Caméra">
+    <button id="rotL" aria-label="Tourner à gauche">⟲</button>
+    <button id="rotR" aria-label="Tourner à droite">⟳</button>
+    <button id="zout" aria-label="Dézoomer">−</button>
+    <button id="zin" aria-label="Zoomer">+</button>
+    <button id="home" aria-label="Recentrer">⌂</button>
+  </div>
+
+  <div id="tip"></div>
+  <div class="panel" id="err" role="alert" hidden></div>
+</div>
+
+<script>
+/* =====================================================================
+   DONNÉES  —  /api/stats (Stripe, lecture seule), relu toutes les minutes
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const nf = (n, d) => Number(n).toLocaleString("fr-FR", {minimumFractionDigits:d||0, maximumFractionDigits:d||0});
+let CUR = "€";
+const money = v => `${nf(v, v % 1 ? 2 : 0)} ${CUR}`;
+const dShort = iso => new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLocaleDateString("fr-FR", {day:"numeric", month:"short"});
+const dLong = iso => new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"short"});
+const SNAP = "Hors Stripe : relevé du 12 nov. 2026.";
+let DATA = null, ITEMS = {}, selected = null;
+
+function curSymbol(c){
+  if (!c) return "€";
+  try { return (0).toLocaleString("fr-FR",{style:"currency",currency:c.toUpperCase(),maximumFractionDigits:0}).replace(/[\d\s ,.]/g,"") || c.toUpperCase(); }
+  catch { return c.toUpperCase(); }
+}
+const N = (label, n, unit, sub) => ({label, n:n||0, unit:unit||"", sub});
+const T = (label, text, sub) => ({label, text, sub});
+
+function buildItems(d){
+  const ch = d.charges.ok ? d.charges : null, pi = d.intents.ok ? d.intents : null,
+        se = d.sessions.ok ? d.sessions : null, pr = d.products.ok ? d.products : null,
+        ba = d.balance.ok ? d.balance : null, ac = d.account.ok ? d.account : null;
+  CUR = curSymbol((ch && ch.currency) || (ba && ba.currency) || (ac && ac.currency));
+  const err = s => s && !s.ok ? `Stripe : ${s.error}.` : null;
+  const enCours = (ch ? ch.pending : 0) + (pi ? pi.inProgress : 0);
+  const perDay = ch ? ch.gross / 30 : 0;
+  const top = se ? se.top : [];
+  const formation = top.find(p => /formation|trading/i.test(p.name));
+  const bestLines = ch && ch.best
+    ? [`Meilleur jour : ${dLong(ch.best.date)}, ${money(ch.best.amount)}`, `Jour le plus calme : ${dLong(ch.calm.date)}, ${money(ch.calm.amount)}`]
+    : ["Aucune vente sur la période : pas encore de meilleur jour."];
+  const cmdText = pi || ch ? (enCours ? `${enCours} paiement(s) en traitement ou à valider dans Stripe.` : "Aucun paiement en traitement ni à valider dans Stripe.") : "Non lu.";
+
+  const it = {
+    overview:{eyebrow:"Vue d'ensemble", name:"La boutique Nuvéa", range:true, status: ch ? "ok" : "wait",
+      stats:[N("Chiffre d'affaires",ch&&ch.gross,CUR,`≈ ${money(perDay)} par jour`), N("Clients",ch&&ch.customers,"",`≈ ${nf((ch?ch.customers:0)/30,1)} par jour`),
+        ch && ch.avg !== null ? N("Panier moyen",ch.avg,CUR) : T("Panier moyen","—","Aucune vente à diviser"), N("Commandes en cours",enCours)],
+      spark:true, lines:bestLines, sections:[{title:"Commandes en cours", text:cmdText}],
+      note: err(d.charges) || "Toutes tes ventes Stripe des 30 derniers jours, heure de Paris."},
+    tower:{eyebrow:"Produit", name:"Formation Trading IA", range:true, status: se ? "ok" : "wait",
+      stats:[N("Chiffre d'affaires",formation&&formation.revenue,CUR), N("Ventes",formation&&formation.qty),
+        T("Stock","Illimité","Produit digital"), N("Part du CA",formation && ch && ch.gross ? Math.round(formation.revenue/ch.gross*100) : 0,"%")],
+      sections:[{title:"Comment c'est compté", text: formation ? `Ventes Checkout du produit « ${formation.name} ».` : "Aucune vente Checkout d'un produit nommé « formation » ou « trading » sur 30 jours."}],
+      note: err(d.sessions)},
+    shelves:{eyebrow:"Étagères", name:"Packs digitaux", range:true, status: pr ? "ok" : "wait",
+      stats:[N("Produits actifs",pr&&pr.active), N("Ventes Checkout",se&&se.completed),
+        pr && pr.stock !== null ? N("Stock suivi",pr.stock,"","metadata.stock") : T("Stock","Illimité","Produits digitaux"),
+        N("CA du n°1",top[0]&&top[0].revenue,CUR)],
+      sections:[{title:"Produits les plus vendus", items: top.length ? top.map(p => `${p.name} · ${p.qty} vendu${p.qty>1?"s":""} · ${money(p.revenue)}`) : ["Aucune vente sur 30 jours."]}],
+      alerts: pr && pr.active === 0 ? ["Aucun produit actif dans Stripe : tes packs n'y sont pas encore créés."] : [],
+      note: err(d.products)},
+    counter:{eyebrow:"Comptoir", name:"Caisse Stripe", range:false, status: ac && ac.charges_enabled ? "ok" : "wait",
+      stats:[N("Solde disponible",ba&&ba.available,CUR), N("Solde en attente",ba&&ba.pending,CUR),
+        N("Remboursé (30 j)",ch&&ch.refunded,CUR), T("Paiements", ac ? (ac.charges_enabled ? "Activés" : "À activer") : "—", ac ? (ac.payouts_enabled ? "Virements activés" : "Virements bloqués") : "")],
+      sections:[{title:"Compte", text: ac ? ac.name : "Non lu"}],
+      alerts: ac && !ac.charges_enabled ? ["Paiements Stripe pas encore activés."] : [],
+      note: err(d.balance) || err(d.account)},
+    clients:{eyebrow:"Clients", name:"Les clients", range:true, status: ch ? "ok" : "wait",
+      stats:[N("Matin",ch&&ch.moments.matin,"","avant 12 h"), N("Midi",ch&&ch.moments.midi,"","12 h – 14 h"),
+        N("Après-midi",ch&&ch.moments.soir,"","après 14 h"), ch && ch.avg !== null ? N("Panier moyen",ch.avg,CUR) : T("Panier moyen","—")],
+      sections:[{title:"Total", text: ch ? `${ch.customers} client${ch.customers>1?"s":""} unique${ch.customers>1?"s":""}, ${ch.count} paiement${ch.count>1?"s":""}.` : "Non lu."},
+                {title:"Dans la ville", text: ch && ch.customers ? "Chaque personnage représente un client, coloré selon l'heure de son achat." : "Les silhouettes grises devant la boutique sont des places vides : aucun client sur 30 jours."}],
+      note: err(d.charges)},
+    trucks:{eyebrow:"Livraisons", name:"Les camionnettes", range:true, status: se || ch ? "ok" : "wait",
+      stats:[N("Livrées",se ? se.completed : ch && ch.count,"","accès envoyés"), N("En cours",enCours),
+        N("Paiements échoués",ch&&ch.failed), N("Paiements abandonnés",pi&&pi.abandoned)],
+      sections:[{title:"Comment c'est compté", text:"Une livraison = une session de paiement Checkout terminée."}],
+      note: err(d.sessions)},
+    shop:{eyebrow:"Vitrine", name:"Pages de paiement", range:true, status: se ? "ok" : "wait",
+      stats:[N("Ouvertes",se&&se.created), N("Terminées",se&&se.completed),
+        N("Conversion",se && se.created ? Math.round(se.completed/se.created*100) : 0,"%"), N("Expirées",se&&se.expired)],
+      sections:[{title:"À savoir", text:"Compte les pages de paiement Stripe, pas les visites de ta page de vente systeme.io."}],
+      note: err(d.sessions)},
+    studio:{eyebrow:"Contenu", name:"Studio vidéo", range:false, status:"off",
+      stats:[N("Docs scripts et prompts",3), T("Dernier modifié","11 nov."), N("Vidéos analysées",0), T("Vues mesurées","Non accessibles")],
+      sections:[{title:"Source", text:"Google Drive : « TIA - Scripts… », « TIA - Prompts offerts », « prompt video »."}], note:SNAP},
+    tiktok:{eyebrow:"Audience", name:"Antenne TikTok", range:false, status:"off",
+      stats:[N("Comptes publicitaires",0), N("Business Centers",0), N("Dépense pub",0,"€"), T("Vues organiques","Non accessibles")],
+      alerts:["Aucun compte publicitaire TikTok relié."], note:SNAP},
+    funnel:{eyebrow:"Tunnel", name:"Porte systeme.io", range:false, status:"off",
+      stats:[T("Entrées","Non lu"), N("Docs de configuration",1), T("Connexion","Aucune"), T("Source","Drive")],
+      sections:[{title:"Pour l'ajouter", text:"Exporte les statistiques du tunnel en CSV et envoie-les moi."}], note:SNAP},
+    mail:{eyebrow:"Courrier", name:"Boîte mail", range:false, status:"off",
+      stats:[N("Emails de commande",0), N("Emails Stripe récents",2), T("Fournisseurs","DSers, CJ, AliExpress"), N("Période lue",30,"j")],
+      note:SNAP}
+  };
+  return it;
+}
+const ORDER = ["overview","tower","shelves","counter","clients","trucks","shop","studio","tiktok","funnel","mail"];
+
+/* ---------- Comptage animé ---------- */
+const shown = new WeakMap(); let raf = 0;
+function countUp(targets){
+  cancelAnimationFrame(raf);
+  const dec = t => (t.to % 1 ? 2 : 0);
+  if (reduce){ targets.forEach(t => { t.el.textContent = nf(t.to, dec(t)); shown.set(t.el, t.to); }); return; }
+  targets.forEach(t => t.from = shown.get(t.el) ?? 0);
+  const t0 = performance.now();
+  const tick = now => {
+    const p = Math.min(1, (now - t0) / 1100), e = 1 - Math.pow(1 - p, 3);
+    targets.forEach(t => { const v = t.from + (t.to - t.from) * e; t.el.textContent = nf(v, p < 1 ? 0 : dec(t)); shown.set(t.el, v); });
+    if (p < 1) raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+}
+
+/* ---------- Courbe du CA par jour ---------- */
+function sparkline(days){
+  const W = 300, H = 64, max = Math.max(1, ...days.map(d => d.amount));
+  const pts = days.map((d, i) => [i/(days.length-1)*W, H - 6 - d.amount/max*(H-14)]);
+  const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const last = pts[pts.length-1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Chiffre d'affaires par jour">
+    <line x1="0" y1="${H-6}" x2="${W}" y2="${H-6}" stroke="#E6DFD2" stroke-width="1"/>
+    <path d="${line} L ${W} ${H-6} L 0 ${H-6} Z" fill="#D97757" fill-opacity=".14"/>
+    <path d="${line}" fill="none" stroke="#D97757" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="#B9583A"/></svg>
+    <div class="spark-axis"><span>${dShort(days[0].date)}</span><span>max ${money(Math.max(0,...days.map(d=>d.amount)))}</span><span>${dShort(days[days.length-1].date)}</span></div>`;
+}
+
+/* ---------- Carte ---------- */
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function rangeText(){
+  if (!DATA) return "";
+  const a = new Date(DATA.periodStart), b = new Date(DATA.fetchedAt);
+  const f = x => x.toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"short"});
+  return `${f(a)} → ${f(b)} · 30 jours`;
+}
+function openCard(id, keep){
+  const it = ITEMS[id]; if (!it) return; selected = id;
+  $("c-eye").textContent = it.eyebrow;
+  $("c-title").textContent = it.name;
+  $("c-range").textContent = it.range ? rangeText() : (it.note === SNAP ? "Relevé du 12 nov. 2026" : "En direct depuis Stripe");
+  const dl = $("c-stats"), prev = keep ? [...dl.querySelectorAll("dd > span")] : [];
+  dl.innerHTML = ""; const targets = [];
+  it.stats.forEach(s => {
+    const box = document.createElement("div"); box.className = "st";
+    const dt = document.createElement("dt"); dt.textContent = s.label;
+    const dd = document.createElement("dd");
+    if (s.text !== undefined){ dd.textContent = s.text; dd.className = "txt"; }
+    else {
+      const num = document.createElement("span"); const old = prev.shift();
+      num.textContent = old ? old.textContent : "0"; shown.set(num, old ? (shown.get(old) ?? 0) : 0);
+      dd.appendChild(num);
+      if (s.unit){ const u = document.createElement("small"); u.textContent = s.unit; dd.appendChild(u); }
+      targets.push({el:num, to:s.n});
+    }
+    box.append(dt, dd);
+    if (s.sub){ const sb = document.createElement("div"); sb.className = "sub"; sb.textContent = s.sub; box.appendChild(sb); }
+    dl.appendChild(box);
+  });
+  let h = "";
+  if (it.spark && DATA && DATA.charges.ok) h += `<div class="sec"><h3>Chiffre d'affaires par jour</h3>${sparkline(DATA.charges.days)}${it.lines ? `<ul class="lines">${it.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}</div>`;
+  (it.sections || []).forEach(s => {
+    h += `<div class="sec"><h3>${esc(s.title)}</h3>` + (s.items ? `<ul class="lines">${s.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="txtsec">${esc(s.text)}</p>`) + `</div>`;
+  });
+  if (it.alerts && it.alerts.length) h += `<div class="sec alertbox"><h3>⚠ À traiter</h3><ul>${it.alerts.map(a => `<li>${esc(a)}</li>`).join("")}</ul></div>`;
+  if (it.note) h += `<p class="c-range" style="margin:12px 0 0">${esc(it.note)}</p>`;
+  $("c-extra").innerHTML = h;
+  $("card").classList.add("open");
+  countUp(targets);
+  $("pickEl").value = id;
+  if (!keep) focusOn(id);
+}
+function closeCard(){ selected = null; $("card").classList.remove("open"); $("pickEl").value = ""; }
+$("close").onclick = closeCard;
+addEventListener("keydown", e => { if (e.key === "Escape") closeCard(); });
+$("pickEl").onchange = e => e.target.value ? openCard(e.target.value) : closeCard();
+
+/* ---------- Résumé + rafraîchissement ---------- */
+let summaryShown = false;
+function renderSummary(d){
+  const ch = d.charges.ok ? d.charges : null;
+  const alerts = ORDER.reduce((n, id) => n + ((ITEMS[id].alerts || []).length), 0);
+  $("s-range").textContent = rangeText();
+  const set = (id, v, unit) => { const el = $(id); if (v === null){ el.textContent = "—"; return null; }
+    el.innerHTML = `<span></span>${unit ? " " + unit : ""}`; const s = el.firstChild; shown.set(s, summaryShown ? (+el.dataset.v || 0) : 0); el.dataset.v = v; return {el:s, to:v}; };
+  const t = [set("k-ca", ch ? ch.gross : null, CUR), set("k-cl", ch ? ch.customers : null), set("k-avg", ch && ch.avg !== null ? ch.avg : null, CUR)].filter(Boolean);
+  $("k-al").textContent = `⚠ ${alerts}`;
+  const at = new Date(d.fetchedAt).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+  const bad = ["account","charges","intents","sessions","products","balance"].filter(k => !d[k].ok);
+  $("s-live").innerHTML = bad.length ? `Stripe mis à jour à ${at} · sections non lues : ${bad.join(", ")}` : `<b>●</b> Stripe en direct · mis à jour à ${at} · toutes les ${d.refreshSeconds} s`;
+  if (!selected) countUp(t); else t.forEach(x => x.el.textContent = nf(x.to, x.to % 1 ? 2 : 0));
+  summaryShown = true;
+}
+async function refresh(){
+  try {
+    const r = await fetch("/api/stats", {cache:"no-store"});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    DATA = await r.json(); ITEMS = buildItems(DATA);
+    $("err").hidden = true;
+    if ($("pickEl").options.length === 1) ORDER.forEach(id => { const o = document.createElement("option"); o.value = id; o.textContent = ITEMS[id].name; $("pickEl").appendChild(o); });
+    renderSummary(DATA); updateWorld(DATA);
+    if (selected) openCard(selected, true);
+  } catch (e) {
+    $("err").hidden = false; $("err").textContent = `Serveur injoignable (${e.message}). Nouvel essai dans une minute.`;
+  }
+}
+
+/* =====================================================================
+   MONDE 3D
+   ===================================================================== */
+const canvas = $("gl");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const hemi = new THREE.HemisphereLight(0xfff6ec, 0x8f8270, .5); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0e0, .85);
+sun.position.set(18, 30, 12); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, {left:-26, right:26, top:26, bottom:-26, near:1, far:90}); sun.shadow.bias = -.0005;
+scene.add(sun);
+
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 400);
+const HOME = {pos:new THREE.Vector3(30, 28, 30), target:new THREE.Vector3(0, 1, 0), zoom:1.15};
+cam.position.copy(HOME.pos); cam.zoom = HOME.zoom;
+const controls = new THREE.OrbitControls(cam, canvas);
+Object.assign(controls, {enableDamping:true, dampingFactor:.08, rotateSpeed:.55, zoomSpeed:.9, panSpeed:.8, screenSpacePanning:true,
+  minZoom:.6, maxZoom:4, minPolarAngle:.45, maxPolarAngle:1.15});
+controls.target.copy(HOME.target);
+
+const COL = {cream:0xF2EADB, cream2:0xEADFCB, roof:0xD97757, roof2:0xC65F3F, roof3:0xE08E6B, shutter:0x8EA3AE, ink:0x3B3631,
+  street:0x8E867B, walk:0xCFC4B1, grass:0xA9B585, curb:0xCBC1AF, wood:0x9A7352, leaf:0x8FA56E, leaf2:0xA4B77F, pot:0xC8714C,
+  win:0x5A5C5E, glow:0xFFC58F, white:0xFFFBF4, water:0x9CC3C0, orange:0xD97757};
+const pick = [], groups = {}, glowMats = {}, markers = {};
+const mat = (c, o) => new THREE.MeshLambertMaterial(Object.assign({color:c, flatShading:true}, o||{}));
+function add(p, geo, c, x, y, z, o){ const m = new THREE.Mesh(geo, mat(c, o)); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; p.add(m); return m; }
+const B = (w,h,d) => new THREE.BoxGeometry(w,h,d);
+const Cy = (a,b,h,s) => new THREE.CylinderGeometry(a,b,h,s||8);
+function grp(id, x, z, parent){ const g = new THREE.Group(); g.position.set(x, 0, z); (parent||scene).add(g); if (id){ groups[id] = g; glowMats[id] = []; } return g; }
+function reg(id, g){ (g||groups[id]).traverse(o => { if (o.isMesh){ o.userData.id = id; if (!pick.includes(o)) pick.push(o); } }); }
+function glowWin(id, p, w, h, x, y, z, ry){ const m = add(p, B(w, h, .06), COL.win, x, y, z, {emissive:0x000000}); if (ry) m.rotation.y = ry; m.castShadow = false; (glowMats[id] = glowMats[id] || []).push(m.material); return m; }
+function textTex(txt, opt){
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128; const x = c.getContext("2d");
+  x.fillStyle = opt.bg; x.fillRect(0,0,512,128); x.fillStyle = opt.fg; x.font = `600 ${opt.size||64}px Georgia, serif`;
+  x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(txt, 256, 68);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+}
+
+/* --- Sol : îlots, trottoirs, rues, passages piétons --- */
+const SIZE = 52, ST = [-9, 9], SW = 2.6;
+add(scene, B(SIZE, .4, SIZE), COL.walk, 0, -.2, 0).castShadow = false;
+[ST, ST].forEach((arr, axis) => arr.forEach(p => {
+  const r = add(scene, axis ? B(SIZE, .05, SW) : B(SW, .05, SIZE), COL.street, axis ? 0 : p, .02, axis ? p : 0); r.castShadow = false;
+  for (let i = -SIZE/2 + 1; i < SIZE/2; i += 2.2){
+    if (Math.abs(i - ST[0]) < 2 || Math.abs(i - ST[1]) < 2) continue;
+    add(scene, axis ? B(1, .06, .1) : B(.1, .06, 1), COL.white, axis ? i : p, .05, axis ? p : i).castShadow = false;
+  }
+}));
+// passages piétons autour des carrefours
+ST.forEach(x => ST.forEach(z => {
+  [[x, z + 2.1, 1], [x, z - 2.1, 1], [x + 2.1, z, 0], [x - 2.1, z, 0]].forEach(([cx, cz, horiz]) => {
+    for (let k = -2; k <= 2; k++) add(scene, horiz ? B(.3, .06, 1.1) : B(1.1, .06, .3), COL.white, cx + (horiz ? k*.5 : 0), .05, cz + (horiz ? 0 : k*.5)).castShadow = false;
+  });
+}));
+// îlots (bordure + herbe là où il n'y a pas de bâtiment)
+function patch(x, z, w, d){ add(scene, B(w, .08, d), COL.grass, x, .04, z).castShadow = false; }
+patch(-4.6, 4.8, 3.2, 2.6); patch(4.6, 4.8, 3.2, 2.6); patch(0, 16.5, 8, 4); patch(-16.5, 16.5, 7, 6);
+const pond = add(scene, B(5.5, .12, 3.4), COL.water, 16.5, .06, 16.5); pond.castShadow = false;
+
+/* --- Décor : arbres en pots, lampadaires, maisons --- */
+function tree(x, z, s, potted){
+  s = s || 1; const g = grp(null, x, z);
+  if (potted) add(g, Cy(.42*s, .32*s, .45*s, 8), COL.pot, 0, .22*s, 0);
+  add(g, Cy(.08*s, .1*s, .9*s, 5), COL.wood, 0, (potted ? .45 : 0) + .45*s, 0);
+  add(g, new THREE.IcosahedronGeometry(.62*s, 0), COL.leaf, 0, (potted ? .45 : 0) + 1.25*s, 0);
+  add(g, new THREE.IcosahedronGeometry(.42*s, 0), COL.leaf2, .2*s, (potted ? .45 : 0) + 1.6*s, .1*s);
+}
+const lampMats = [];
+function lamp(x, z){ const g = grp(null, x, z); add(g, Cy(.05, .06, 1.8, 5), COL.ink, 0, .9, 0);
+  const b = add(g, new THREE.SphereGeometry(.16, 8, 6), COL.glow, 0, 1.85, 0, {emissive:0x000000}); lampMats.push(b.material); }
+const houseWins = [];
+function house(x, z, w, d, floors, rot, roofCol){
+  const g = grp(null, x, z); g.rotation.y = rot || 0; const h = floors * 1.35;
+  add(g, B(w, h, d), floors % 2 ? COL.cream : COL.cream2, 0, h/2, 0);
+  const roof = add(g, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), roofCol || COL.roof, 0, h + .55, 0);
+  roof.rotation.y = Math.PI/4; roof.scale.set(w*1.12, 1.15, d*1.12);
+  const cols = Math.max(2, Math.round(w/1.3));
+  for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++){
+    const wx = -w/2 + (c + .5) * w/cols, wy = .75 + f*1.35;
+    const m = add(g, B(.42, .62, .06), COL.win, wx, wy, d/2 + .03, {emissive:0x000000}); m.castShadow = false; houseWins.push(m.material);
+    add(g, B(.14, .62, .05), COL.shutter, wx - .3, wy, d/2 + .04).castShadow = false;
+    add(g, B(.14, .62, .05), COL.shutter, wx + .3, wy, d/2 + .04).castShadow = false;
+  }
+  add(g, B(.6, 1, .06), COL.wood, w/2 - .6, .5, d/2 + .03);
+  return g;
+}
+// blocs extérieurs : maisons de village
+[[-19,-19,5,4,2,0,COL.roof],[-13.5,-19.5,4,3.5,3,0,COL.roof2],[-19,-13.5,4,4,2,Math.PI/2,COL.roof3],
+ [13.5,-19.5,4.4,3.6,2,0,COL.roof3],[19,-19,4,4,3,0,COL.roof],[19,-13.5,4,3.6,2,-Math.PI/2,COL.roof2],
+ [-19,13.5,4,3.6,2,Math.PI/2,COL.roof2],[-13.5,19.5,4,3.4,2,Math.PI,COL.roof],
+ [13.5,19.5,4.2,3.6,2,Math.PI,COL.roof2],[19.5,12.5,3.6,4,3,-Math.PI/2,COL.roof],
+ [-19,4,4,3.6,2,Math.PI/2,COL.roof],[19,-4,4,3.6,2,-Math.PI/2,COL.roof3],[13.5,4.5,3.6,3.2,2,Math.PI,COL.roof],[-5.5,-19.5,3.6,3.4,2,0,COL.roof2],[5.5,-19.5,3.6,3.4,3,0,COL.roof3]
+].forEach(a => house(...a));
+[[-11.2,-6],[-11.2,6],[11.2,-6],[11.2,6],[-6,-11.2],[6,-11.2],[-6,11.2],[6,11.2],[-20,-5],[20,5],[-4,22],[4,22],[-22,0],[22,0]].forEach(([x,z]) => tree(x, z, .9));
+[[-4.6,4.8],[4.6,4.8],[-6,-6],[6,-6]].forEach(([x,z]) => tree(x, z, .75, true));
+[[-6.9,6.9],[6.9,6.9],[-6.9,-6.9],[6.9,-6.9],[-11,11],[11,-11],[11,11],[-11,-11]].forEach(([x,z]) => lamp(x, z));
+
+/* --- Bâtiment central : la boutique Nuvéa, en coupe --- */
+const shop = grp("overview", 0, -.6);
+(function(){
+  const W = 9, D = 6.4, H = 3, low = .75;
+  add(shop, B(W, .2, D), 0xE9DCC6, 0, .1, 0);                                         // sol
+  for (let i = -W/2 + .5; i < W/2; i += 1) for (let j = -D/2 + .5; j < D/2; j += 1)
+    if ((Math.round(i + j) % 2) === 0) add(shop, B(.98, .02, .98), 0xDCCBB0, i, .21, j).castShadow = false; // carrelage
+  add(shop, B(W, H, .3), COL.cream, 0, H/2, -D/2);                                      // mur du fond
+  add(shop, B(.3, H, D), COL.cream2, -W/2, H/2, 0);                                     // mur gauche
+  add(shop, B(W, low, .3), COL.cream, 0, low/2, D/2);                                   // muret avant (coupe)
+  add(shop, B(.3, low, D), COL.cream2, W/2, low/2, 0);                                  // muret droit (coupe)
+  add(shop, B(W + .3, .18, .4), COL.orange, 0, H, -D/2);                                // corniche
+  add(shop, B(.4, .18, D + .3), COL.orange, -W/2, H, 0);
+  for (let i = 0; i < 4; i++) glowWin("overview", shop, 1.2, 1.1, -3.3 + i*2.2, 1.7, -D/2 + .17);
+  // enseigne
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({map:textTex("Nuvéa", {bg:"#D97757", fg:"#FFFBF4", size:72})}));
+  sign.position.set(0, H + .75, -D/2 + .05); shop.add(sign);
+  add(shop, B(4.1, 1.1, .1), COL.roof2, 0, H + .75, -D/2 - .02);
+  // store rayé sur la façade avant
+  for (let i = 0; i < 9; i++){ const s = add(shop, B(1, .08, 1.3), i % 2 ? COL.white : COL.orange, -W/2 + .5 + i, 2.1, D/2 + .6); s.rotation.x = .35; }
+  // porte d'entrée (ouverture dans le muret avant)
+  add(shop, B(1.4, .02, .5), 0x7D6450, 2.6, .22, D/2 + .1).castShadow = false;
+  // table et ordinateur « formation »
+  add(shop, B(1.8, .1, 1), COL.wood, 1.8, .95, -.4); [[-.8,-.4],[.8,-.4],[-.8,.4],[.8,.4]].forEach(([x,z]) => add(shop, B(.08,.85,.08), COL.ink, 1.8+x, .52, -.4+z));
+  add(shop, B(.7, .45, .05), COL.ink, 1.8, 1.25, -.7);
+  glowWin("overview", shop, .62, .38, 1.8, 1.25, -.67);
+  // tabourets
+  [[1.2,.5],[2.4,.5]].forEach(([x,z]) => { add(shop, Cy(.25,.25,.08,8), COL.orange, x, .7, z); add(shop, Cy(.05,.05,.5,5), COL.ink, x, .45, z); });
+})();
+reg("overview", shop);
+// comptoir = caisse Stripe (dans la boutique)
+const counter = grp("counter", -1.4, -2.2, shop);
+(function(){
+  add(counter, B(3.4, 1.05, .9), COL.wood, 0, .62, 0);
+  add(counter, B(3.6, .08, 1.05), COL.white, 0, 1.18, 0);
+  add(counter, B(.7, .35, .55), 0x2E2A26, .9, 1.42, 0);
+  glowWin("counter", counter, .5, .22, .9, 1.48, .29);
+  add(counter, B(.5, .06, .35), 0x635BFF, -.6, 1.25, .1);   // terminal de paiement
+})();
+reg("counter", counter);
+// étagères = packs digitaux
+const shelves = grp("shelves", -4.05, .7, shop);
+(function(){
+  add(shelves, B(.5, 2.4, 3.6), COL.wood, 0, 1.3, 0);
+  const cols = [0xD97757, 0xF2C29B, 0x8EA3AE, 0xC65F3F, 0xE9D3B4, 0x6E8B6A];
+  for (let s = 0; s < 4; s++){
+    add(shelves, B(.6, .06, 3.6), 0x7C5C41, .05, .45 + s*.55, 0);
+    for (let k = 0; k < 7; k++) add(shelves, B(.35, .32 + (k%3)*.05, .34), cols[(s*3 + k) % cols.length], .12, .65 + s*.55, -1.5 + k*.5);
+  }
+})();
+reg("shelves", shelves);
+
+/* --- Tour Formation Trading IA (ta photo) --- */
+const tower = grp("tower", 0, -16);
+(function(){
+  const tiers = [[4.4,3,COL.cream],[3.6,3,COL.cream2],[2.9,2.8,COL.cream],[2.2,2.6,COL.cream2],[1.5,2.4,COL.cream]];
+  let y = 0;
+  tiers.forEach(([w, h, c]) => {
+    add(tower, B(w, h, w), c, 0, y + h/2, 0);
+    add(tower, B(w + .2, .16, w + .2), COL.orange, 0, y + h, 0);
+    for (let k = 0; k < 3; k++){ const o = (k - 1) * w/3.1;
+      glowWin("tower", tower, w/4.6, h*.48, o, y + h*.5, w/2 + .04);
+      glowWin("tower", tower, w/4.6, h*.48, w/2 + .04, y + h*.5, o, Math.PI/2); }
+    y += h;
+  });
+  add(tower, Cy(.05, .25, 3.4, 6), COL.roof2, 0, y + 1.7, 0);
+})();
+reg("tower");
+
+/* --- Studio vidéo + antenne TikTok --- */
+const studio = grp("studio", -16, -3);
+(function(){
+  add(studio, B(5, 2.6, 4), 0xE3D6C1, 0, 1.3, 0);
+  add(studio, B(5.3, .25, 4.3), COL.ink, 0, 2.72, 0);
+  glowWin("studio", studio, 2.6, 1.1, 0, 1.4, 2.03);
+  add(studio, B(1.4, .5, .1), COL.orange, -1.6, 2.3, 2.05);
+})();
+reg("studio");
+const tiktok = grp("tiktok", -17.2, -3.8);
+(function(){
+  add(tiktok, Cy(.08, .14, 3.4, 5), COL.ink, 0, 4.5, 0);
+  add(tiktok, B(1.9, 1.1, .14), 0x16171B, 0, 6.3, 0);
+  add(tiktok, B(.26, .76, .16), 0x25F4EE, -.32, 6.3, .06);
+  add(tiktok, B(.26, .76, .16), 0xFE2C55, .32, 6.3, .06);
+})();
+reg("tiktok");
+
+/* --- Porte systeme.io au-dessus de la rue --- */
+const funnel = grp("funnel", 9, 4.4);
+(function(){
+  [-1.7, 1.7].forEach(x => add(funnel, B(.35, 3.6, .35), COL.ink, x, 1.8, 0));
+  add(funnel, B(3.9, .7, .4), COL.orange, 0, 3.8, 0);
+  const t = new THREE.Mesh(new THREE.PlaneGeometry(3.4, .6), new THREE.MeshBasicMaterial({map:textTex("systeme.io", {bg:"#D97757", fg:"#FFFBF4", size:60})}));
+  t.position.set(0, 3.8, .21); funnel.add(t);
+})();
+reg("funnel");
+
+/* --- Boîte aux lettres --- */
+const mail = grp("mail", 6.2, 4.2);
+(function(){ add(mail, Cy(.06,.06,1.2,5), COL.ink, 0, .6, 0); add(mail, B(.9,.65,.6), COL.orange, 0, 1.45, 0); add(mail, B(.08,.45,.05), COL.white, .48, 1.65, 0); })();
+reg("mail");
+
+/* --- Vitrine (pages de paiement) : présentoir devant la boutique --- */
+const vitrine = grp("shop", -2.6, 4.6);
+(function(){
+  add(vitrine, B(2.2, .9, .8), COL.white, 0, .45, 0);
+  add(vitrine, B(2, .7, .7), 0xCFE2E0, 0, 1.25, 0, {transparent:true, opacity:.55});
+  [-.6, 0, .6].forEach((x, i) => add(vitrine, B(.4, .25, .3), [COL.orange, 0xF2C29B, COL.roof2][i], x, 1.05, 0));
+})();
+reg("shop");
+
+/* --- Camionnettes --- */
+const trucks = [], truckG = grp("trucks", 0, 0);
+for (let i = 0; i < 2; i++){
+  const t = new THREE.Group();
+  add(t, B(2, 1.1, 1.05), COL.white, -.3, .82, 0);
+  add(t, B(2.02, .16, 1.07), COL.orange, -.3, .7, 0);
+  add(t, B(.8, .85, 1), COL.roof2, 1.05, .7, 0);
+  add(t, B(.06, .38, .8), 0x2B2825, 1.46, .86, 0);
+  [[-.9,.5],[-.9,-.5],[.95,.5],[.95,-.5]].forEach(([x,z]) => { const w = add(t, Cy(.22,.22,.16,10), COL.ink, x, .24, z); w.rotation.x = Math.PI/2; });
+  t.userData.offset = i * .5; trucks.push(t); truckG.add(t);
+}
+reg("trucks");
+
+/* --- Clients : un personnage par client, couleur = moment de l'achat --- */
+const clientG = grp("clients", 0, 0); let people = [];
+const MOMENT_COL = {matin:0x3F7FC1, midi:0xD9583C, soir:0x4E9A62};
+function person(color, ghost){
+  const p = new THREE.Group(), o = ghost ? {transparent:true, opacity:.4} : {};
+  add(p, Cy(.2, .28, .78, 7), ghost ? 0xD8D0C2 : color, 0, .55, 0, o);
+  add(p, new THREE.IcosahedronGeometry(.2, 0), ghost ? 0xE8E0D2 : 0xF0C9A4, 0, 1.13, 0, o);
+  return p;
+}
+function buildClients(d){
+  people.forEach(p => clientG.remove(p)); people = [];
+  pick.splice(0, pick.length, ...pick.filter(m => m.userData.id !== "clients"));
+  const m = d && d.charges.ok ? d.charges.moments : {matin:0, midi:0, soir:0};
+  const total = m.matin + m.midi + m.soir;
+  if (!total){
+    for (let i = 0; i < 4; i++){ const p = person(0, true); p.position.set(1 + i*.8, 0, 6.4); p.userData = {ghost:true, ph:i}; people.push(p); clientG.add(p); }
+  } else {
+    const n = Math.min(total, 30), list = [];
+    ["matin","midi","soir"].forEach(k => { for (let i = 0; i < Math.round(m[k] / total * n); i++) list.push(k); });
+    list.forEach((k, i) => { const p = person(MOMENT_COL[k]); p.userData = {ph:i / list.length, lane:(i % 3 - 1) * .5}; people.push(p); clientG.add(p); });
+  }
+  reg("clients", clientG);
+}
+
+/* --- Alertes : triangle rouge au-dessus des éléments concernés --- */
+function alertTex(){
+  const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
+  x.fillStyle = "#C8442F"; x.beginPath(); x.moveTo(64, 10); x.lineTo(120, 112); x.lineTo(8, 112); x.closePath(); x.fill();
+  x.fillStyle = "#fff"; x.font = "bold 70px Arial"; x.textAlign = "center"; x.fillText("!", 64, 102);
+  return new THREE.CanvasTexture(c);
+}
+const ALERT_MAT = new THREE.SpriteMaterial({map:alertTex(), depthTest:false});
+const ALERT_AT = {shelves:[-4.05,3.4,.1], counter:[-1.4,2.4,-2.8], tiktok:[-17.2,7.6,-3.8], overview:[0,4.6,-.6]};
+function updateAlerts(){
+  for (const id in ALERT_AT){
+    const has = ITEMS[id] && ITEMS[id].alerts && ITEMS[id].alerts.length;
+    if (has && !markers[id]){ const s = new THREE.Sprite(ALERT_MAT); s.scale.set(.9, .9, .9); s.position.set(...ALERT_AT[id]); s.renderOrder = 10; scene.add(s); markers[id] = s; }
+    if (!has && markers[id]){ scene.remove(markers[id]); delete markers[id]; }
+  }
+}
+function updateWorld(d){ buildClients(d); updateAlerts(); }
+
+/* =====================================================================
+   LUMIÈRE : jour / soir, et allumage progressif au chargement
+   ===================================================================== */
+let lightMode = "auto";
+const parisHour = () => +new Intl.DateTimeFormat("fr-FR", {timeZone:"Europe/Paris", hour:"2-digit", hourCycle:"h23"}).format(new Date());
+const isNight = () => lightMode === "night" || (lightMode === "auto" && (parisHour() >= 19 || parisHour() < 7));
+document.querySelectorAll("[data-light]").forEach(b => b.onclick = () => {
+  lightMode = b.dataset.light;
+  document.querySelectorAll("[data-light]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+});
+const ORDER_LIGHT = ["overview","counter","shelves","tower","studio"];
+const hl = new THREE.Color(0xD97757);
+let nightK = isNight() ? 1 : 0;
+function paint(t, dt){
+  const target = isNight() ? 1 : 0;
+  nightK += (target - nightK) * Math.min(1, dt * 2.5);
+  $("app").classList.toggle("night", target === 1);
+  hemi.intensity = .5 - .3*nightK; sun.intensity = .78 - .55*nightK;
+  hemi.color.setRGB(1, .965 - .1*nightK, .925 - .05*nightK);
+  // fenêtres des bâtiments à toi : s'allument l'une après l'autre au chargement
+  ORDER_LIGHT.forEach((id, i) => {
+    const on = reduce ? 1 : Math.max(0, Math.min(1, (t - .5 - i*.35) / .6));
+    const status = ITEMS[id] ? ITEMS[id].status : "off";
+    const base = status === "off" ? .15 : status === "wait" ? .55 : 1;
+    const k = on * base * (.35 + .65*nightK) * (reduce ? 1 : .93 + .07*Math.sin(t*1.4 + i));
+    (glowMats[id] || []).forEach(m => m.emissive.setRGB(1*k, .7*k, .42*k));
+  });
+  houseWins.forEach((m, i) => { const k = nightK * ((i * 7) % 5 > 1 ? .75 : .1); m.emissive.setRGB(.95*k, .68*k, .4*k); });
+  lampMats.forEach((m, i) => { const k = Math.max(nightK, reduce ? 0 : Math.min(.35, Math.max(0, t - .3 - i*.12))); m.emissive.setRGB(1*k, .75*k, .45*k); });
+  // surbrillance
+  pick.forEach(m => {
+    if (m.material.emissive === undefined || (glowMats[m.userData.id] || []).includes(m.material) || lampMats.includes(m.material)) return;
+    const on = m.userData.id === selected, hov = m.userData.id === hovered;
+    if (on) m.material.emissive.copy(hl).multiplyScalar(.28 * (reduce ? 1 : .75 + .25*Math.sin(t*3)));
+    else if (hov) m.material.emissive.copy(hl).multiplyScalar(.14);
+    else m.material.emissive.setRGB(0, 0, 0);
+  });
+  for (const id in markers) markers[id].position.y = ALERT_AT[id][1] + (reduce ? 0 : Math.sin(t*2.4)*.15);
+}
+
+/* =====================================================================
+   CAMÉRA, INTERACTION, BOUCLE
+   ===================================================================== */
+function resize(){
+  const w = innerWidth, h = innerHeight, half = w < 700 ? 19 : 15, a = w / h;
+  renderer.setSize(w, h, false);
+  cam.left = -half*a; cam.right = half*a; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+let camAnim = null;
+function tween(target, zoom, pos){
+  const to = {t:target.clone(), z:zoom, p:pos ? pos.clone() : null};
+  if (reduce){ controls.target.copy(to.t); cam.zoom = to.z; if (to.p) cam.position.copy(to.p); cam.updateProjectionMatrix(); return; }
+  camAnim = {t0:performance.now(), fT:controls.target.clone(), fZ:cam.zoom, fP:cam.position.clone(), ...to};
+}
+function focusOn(id){
+  const g = groups[id]; if (!g || id === "trucks" || id === "clients") return;
+  const c = new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3());
+  tween(c, Math.max(cam.zoom, 1.9), c.clone().add(cam.position.clone().sub(controls.target)));
+}
+function orbit(angle){
+  const off = cam.position.clone().sub(controls.target); off.applyAxisAngle(new THREE.Vector3(0,1,0), angle);
+  tween(controls.target, cam.zoom, controls.target.clone().add(off));
+}
+$("rotL").onclick = () => orbit(Math.PI/4);
+$("rotR").onclick = () => orbit(-Math.PI/4);
+$("zin").onclick = () => tween(controls.target, Math.min(controls.maxZoom, cam.zoom*1.3));
+$("zout").onclick = () => tween(controls.target, Math.max(controls.minZoom, cam.zoom/1.3));
+$("home").onclick = () => { closeCard(); tween(HOME.target, HOME.zoom, HOME.pos); };
+
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = $("tip");
+let hovered = null, down = null;
+function hit(e){
+  ptr.set((e.clientX/innerWidth)*2 - 1, -(e.clientY/innerHeight)*2 + 1);
+  ray.setFromCamera(ptr, cam);
+  const h = ray.intersectObjects(pick, false)[0]; return h ? h.object.userData.id : null;
+}
+canvas.addEventListener("pointerdown", e => { down = {x:e.clientX, y:e.clientY, b:e.button}; canvas.classList.add("drag"); tip.classList.remove("on"); });
+canvas.addEventListener("pointermove", e => {
+  if (down) return;
+  const id = hit(e); hovered = id; canvas.classList.toggle("over", !!id);
+  if (id && ITEMS[id] && ITEMS[id].name){ tip.innerHTML = `${esc(ITEMS[id].name)}<span>${esc(ITEMS[id].eyebrow)}</span>`; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.add("on"); }
+  else tip.classList.remove("on");
+});
+canvas.addEventListener("pointerup", e => {
+  canvas.classList.remove("drag");
+  if (down && down.b === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6){ const id = hit(e); id ? openCard(id) : closeCard(); }
+  down = null;
+});
+canvas.addEventListener("pointerleave", () => { hovered = null; tip.classList.remove("on"); });
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+// trajet des camionnettes : boucle sur les rues, voie de droite
+const LANE = .65, A0 = ST[0] + LANE, A1 = ST[1] - LANE, loop = [[A0, A0],[A1, A0],[A1, A1],[A0, A1]];
+const seg = loop.map((p, i) => { const q = loop[(i+1)%4]; return Math.hypot(q[0]-p[0], q[1]-p[1]); }), tot = seg.reduce((a,b)=>a+b, 0);
+function onLoop(u){
+  let d = ((u % 1) + 1) % 1 * tot, i = 0; while (d > seg[i]){ d -= seg[i]; i++; }
+  const p = loop[i], q = loop[(i+1)%4], f = d/seg[i];
+  return {x:p[0] + (q[0]-p[0])*f, z:p[1] + (q[1]-p[1])*f, a:Math.atan2(-(q[1]-p[1]), q[0]-p[0])};
+}
+// chemin des clients : du trottoir vers la porte de la boutique
+const path = [[9, 9.8], [5, 7.6], [2.6, 3.2]];
+function onPath(u){ const k = u * 2, i = Math.min(1, Math.floor(k)), f = k - i, a = path[i], b = path[i+1]; return [a[0] + (b[0]-a[0])*f, a[1] + (b[1]-a[1])*f, Math.atan2(-(b[1]-a[1]), b[0]-a[0])]; }
+
+let last = performance.now(); const t0 = last;
+function frame(now){
+  const t = (now - t0)/1000, dt = Math.min(.1, (now - last)/1000); last = now;
+  if (camAnim){
+    const p = Math.min(1, (now - camAnim.t0)/750), e = p < .5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3)/2;
+    controls.target.lerpVectors(camAnim.fT, camAnim.t, e);
+    cam.zoom = camAnim.fZ + (camAnim.z - camAnim.fZ)*e; cam.updateProjectionMatrix();
+    if (camAnim.p) cam.position.lerpVectors(camAnim.fP, camAnim.p, e);
+    if (p >= 1) camAnim = null;
+  }
+  trucks.forEach(tr => { const s = onLoop((reduce ? 0 : t*.018) + tr.userData.offset); tr.position.set(s.x, reduce ? 0 : Math.abs(Math.sin(t*10 + tr.userData.offset*9))*.02, s.z); tr.rotation.y = s.a; });
+  people.forEach(p => {
+    if (p.userData.ghost){ p.position.y = reduce ? 0 : Math.abs(Math.sin(t*1.4 + p.userData.ph))*.04; return; }
+    const u = reduce ? p.userData.ph : (t*.04 + p.userData.ph) % 1, [x, z, a] = onPath(u);
+    p.position.set(x + p.userData.lane, reduce ? 0 : Math.abs(Math.sin(t*6 + p.userData.ph*20))*.06, z); p.rotation.y = a;
+  });
+  paint(t, dt);
+  controls.update();
+  renderer.render(scene, cam);
+  requestAnimationFrame(frame);
+}
+
+ITEMS = Object.fromEntries(ORDER.map(id => [id, {status:"off"}]));
+buildClients(null);
+resize(); cam.updateProjectionMatrix();
+requestAnimationFrame(frame);
+refresh(); setInterval(refresh, 60000);
+</script>
+</body>
+</html>
