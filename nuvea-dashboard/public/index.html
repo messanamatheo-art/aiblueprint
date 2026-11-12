@@ -188,10 +188,20 @@ function calInfo(ex){
     vente:v.filter(x => x.type === "vente").length, prompt:v.filter(x => x.type === "prompt").length,
     joursRestants:Math.max(0, Math.ceil((last.d - now) / 86400000))};
 }
+const dD = iso => new Date(iso + "T12:00:00");
+const dRange = (a, b) => { const A = dD(a), Bd = dD(b), m = x => x.toLocaleDateString("fr-FR", {month:"short"});
+  return A.getMonth() === Bd.getMonth() ? `${A.getDate()}–${Bd.getDate()} ${m(Bd)}` : `${A.getDate()} ${m(A)} – ${Bd.getDate()} ${m(Bd)}`; };
+const daysTo = iso => Math.ceil((dD(iso) - new Date()) / 86400000);
+function periodInfo(alt){
+  const now = new Date(), cur = alt.periodes.find(x => x.type !== "event" && dD(x.du) <= now && now <= new Date(dD(x.au).getTime() + 86400000 * .6));
+  const next = alt.periodes.filter(x => dD(x.du) > now);
+  return {cur, next, nextCfa: next.find(x => x.type === "cfa")};
+}
 function buildItems(d){
   const ok = s => s && s.ok ? s : null;
   const ch = ok(d.charges), pi = ok(d.intents), se = ok(d.sessions), pr = ok(d.products), ba = ok(d.balance), ac = ok(d.account),
-        sio = ok(d.systeme), bu = ok(d.budget), ex = ok(d.extras), cal = calInfo(ex), bc = ex && ex.beacons, tk = ex && ex.tiktok, en = ex && ex.entreprise;
+        sio = ok(d.systeme), bu = ok(d.budget), ex = ok(d.extras), cal = calInfo(ex), bc = ex && ex.beacons, tk = ex && ex.tiktok, en = ex && ex.entreprise,
+        lf = ex && ex.life, alt = lf && lf.alternance, pinf = alt && periodInfo(alt), em = ex && ex.mail;
   CUR = curSymbol((ch && ch.currency) || (ba && ba.currency) || (ac && ac.currency));
   const err = s => s && !s.ok ? s.error : null;
   const enCours = (ch ? ch.pending : 0) + (pi ? pi.inProgress : 0);
@@ -254,14 +264,16 @@ function buildItems(d){
       sections: bu ? [
         {title:"Charges mensuelles", items: [...Object.entries(bu.charges).map(([k,v]) => `${k} : ${eur(v)}`), ...bu.missing.map(k => `${k} : à renseigner`)]},
         {title:"Reste à vivre", text: bu.resteAVivre === null ? "Calculé dès que toutes les charges sont renseignées." : `${eur(bu.resteAVivre)} par mois (salaire − charges).`},
-        ...(projRows ? [{title:"Projection jusqu'à août", table: projRows}] : [])
+        ...(projRows ? [{title:"Projection jusqu'à août", table: projRows}] : []),
+        ...(lf ? [{title:"Routine", text:lf.bilan}] : [])
       ] : [{title:"Erreur", text: err(d.budget) || "Non lu"}],
       alerts: budgetAlerts, note: bu ? `Source : ${bu.source}.` : ""},
     safe:{eyebrow:"Épargne", name:"Le coffre", range:false, status: bu ? "ok" : "wait",
       stats: bu ? [N("Épargne",bu.epargne,"€"), N("Mois de salaire",bu.epargne/bu.salaire,"","épargne ÷ salaire"),
         bu.chargesTotal ? N("Mois de charges couverts",bu.epargne/bu.chargesTotal) : T("Mois de charges couverts","—","charges à renseigner"),
         N("Total compte + épargne",bu.compteCourant + bu.epargne,"€")] : [T("Épargne","Non lu")],
-      sections:[{title:"Réserve de sécurité", text: bu && bu.chargesTotal ? `Ton épargne couvre ${nf(bu.epargne/bu.chargesTotal,1)} mois de charges.` : "Pour savoir combien de mois ton épargne te protège, renseigne tes charges."}],
+      sections:[...(lf ? [{title:lf.coffre.nom, items:[`${lf.coffre.virement} € le ${lf.coffre.jour} de chaque mois, du 26 oct. 2026 au 26 juil. 2027`, `Objectif : environ ${nf(lf.coffre.objectif)} €`, lf.coffre.note]}] : []),
+        {title:"Réserve de sécurité", text: bu && bu.chargesTotal ? `Ton épargne couvre ${nf(bu.epargne/bu.chargesTotal,1)} mois de charges.` : "Pour savoir combien de mois ton épargne te protège, renseigne tes charges."}],
       note: bu ? `Source : ${bu.source}.` : ""},
     shop:{eyebrow:"Terrasse", name:"Pages de paiement", range:true, status: se ? "ok" : "wait",
       stats:[N("Ouvertes",se&&se.created), N("Terminées",se&&se.completed), N("Conversion",se && se.created ? Math.round(se.completed/se.created*100) : 0,"%"), N("Expirées",se&&se.expired)],
@@ -273,14 +285,14 @@ function buildItems(d){
         {title:"Répartition", text:`${cal.vente} vidéos de vente (épingle « Écris IA ») et ${cal.prompt} prompts offerts (épingle « Écris PROMPT »).`}],
       alerts: cal.retard ? [`${cal.retard} vidéo(s) prévue(s) pas encore marquée(s) comme publiée(s).`] : [], note:`Source : ${ex.calendar.source}.`}
     : {eyebrow:"Contenu", name:"Studio vidéo", range:false, status:"off", stats:[T("Calendrier","Non lu")]},
-    tiktok: tk ? {eyebrow:"Audience", name:"Antenne TikTok", range:false, status: tk.connected ? "ok" : "off", snap:"Relevé Beacons du 12 nov. 2026",
+    tiktok: tk ? {eyebrow:"Audience", name:"Agence TikTok", range:false, status: tk.connected ? "ok" : "off", snap:"Relevé Beacons du 12 nov. 2026",
       stats:[N("Abonnés",tk.followers), tk.views ? N("Vues totales",tk.views,"",`${tk.postsSynced} vidéo(s)`) : N("Vidéos remontées",tk.postsSynced,"","via Beacons"),
         cal && cal.next[0] ? T("Prochaine vidéo",fmtSlot(cal.next[0])) : T("Prochaine vidéo","—"), N("Comptes publicitaires",tk.adAccounts)],
       sections:[...(tk.videos && tk.videos.length ? [{title:`Meilleures vidéos (${nf(tk.views || 0)} vues au total)`, items: tk.videos.slice(0, 6).map(v => `${v.title} · ${nf(v.views || 0)} vues · ${nf(v.likes || 0)} j'aime · ${nf(v.comments || 0)} comm.`)}] : []),
         {title:"Compte", text:`${tk.handle} relié à Beacons par la connexion officielle TikTok : abonnés, vues, likes, commentaires et partages remontent après chaque publication.`},
         {title:"Publicité", text:"Aucun compte publicitaire TikTok Ads pour l'instant (vérification d'entreprise en cours)."}],
       note:`Source : ${tk.source}.`}
-    : {eyebrow:"Audience", name:"Antenne TikTok", range:false, status:"off", stats:[T("TikTok","Non lu")]},
+    : {eyebrow:"Audience", name:"Agence TikTok", range:false, status:"off", stats:[T("TikTok","Non lu")]},
     kiosk: bc ? {eyebrow:"Lien en bio", name:"Kiosque Beacons", range:false, status:"ok", snap:"Relevé Beacons du 12 nov. 2026",
       stats:[N("Visites de la page",bc.pageViews,"",bc.period), N("Clics vers la formation",bc.formationClicks),
         N("Taux de clic",bc.pageViews ? Math.round(bc.linkClicks / bc.pageViews * 100) : 0,"%","clics ÷ visites"), N("Inscrits email",bc.emailSignups)],
@@ -295,12 +307,43 @@ function buildItems(d){
         {title:"Fiscalité", text:`TVA : ${en.tva}.`}, {title:"Code APE", text:`${en.ape}. ${en.apeNote}`}],
       alerts: en.todo.filter(t => t.prio === "Priorité 1").map(t => t.texte), note:`Source : ${en.source}.`}
     : {eyebrow:"Entreprise", name:"Mairie", range:false, status:"off", stats:[T("Entreprise","Non lu")]},
-    mail:{eyebrow:"Courrier", name:"Boîte mail", range:false, status:"off",
-      stats:[N("Emails de commande",0), N("Emails Stripe récents",2), T("Campagnes","Bloquées","domaine à authentifier"), N("Période lue",30,"j")],
-      note:`${SNAP} Campagnes : ${COCKPIT}.`}
+    mail:{eyebrow:"Courrier", name:"Boîte mail", range:false, status:"ok", snap: em ? em.source : undefined,
+      stats:[em ? N("Emails non lus",em.nonLus,"","estimation Gmail") : N("Emails de commande",0), N("Emails de commande client",0), T("Campagnes","Bloquées","domaine à authentifier"), N("Période lue",30,"j")],
+      note:`${em ? em.note + ". " : ""}Campagnes : ${COCKPIT}.`},
+    etex: alt ? {eyebrow:"Alternance", name:`Usine ${alt.entreprise}`, range:false, status:"ok", snap:lf.source,
+      stats:[T("Poste",`Alternant ${alt.diplome}`,`${alt.site}`), T("En ce moment", pinf.cur ? pinf.cur.label : "Hors période", pinf.cur ? `jusqu'au ${dD(pinf.cur.au).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}` : ""),
+        T("Prochaine paye",`~${alt.paye.montant} €`,`${dRange(alt.paye.du, alt.paye.au)} (souvent en retard)`), T("Tickets resto",`à déclarer avant le ${dD(alt.tickets.declarer).getDate()} nov.`,alt.tickets.solde)],
+      sections:[{title:"Planning", items: alt.periodes.map(x => `${dRange(x.du, x.au)} · ${x.label}`)},
+        {title:"Paye", text:`Dernière paye : ${alt.paye.derniere}. ${alt.paye.note}`},
+        {title:"Convention de Toulouse", text:alt.convention},
+        {title:"Tickets resto", text:`${alt.tickets.regle} Recharge Edenred le ${dD(alt.tickets.recharge).getDate()} nov.`}], note:`Source : ${lf.source}.`}
+    : {eyebrow:"Alternance", name:"Usine", range:false, status:"off", stats:[T("Agenda","Non lu")]},
+    cfa: alt ? {eyebrow:"École", name:alt.ecole, range:false, status:"ok", snap:lf.source,
+      stats:[T("Diplôme",alt.diplome), T("Horaires",alt.horairesCFA),
+        pinf.nextCfa ? T("Prochaine semaine",dRange(pinf.nextCfa.du, pinf.nextCfa.au),pinf.nextCfa.label) : T("Prochaine semaine","—"),
+        pinf.nextCfa ? N("Rentrée dans",Math.max(0, daysTo(pinf.nextCfa.du)),"j") : T("Rentrée dans","—")],
+      sections:[{title:"Semaines au CFA", items: alt.periodes.filter(x => x.type === "cfa").map(x => `${dRange(x.du, x.au)} · ${x.label}`)},
+        {title:"À savoir", text:"La convention Etex de Toulouse (18–19 nov.) tombe pendant la semaine CFA S47."}],
+      alerts: alt.ecoleTodo, note:`Source : ${lf.source}.`}
+    : {eyebrow:"École", name:"CFA", range:false, status:"off", stats:[T("Agenda","Non lu")]},
+    bank: lf ? {eyebrow:"Banques", name:"Banque & primes", range:false, status:"ok", snap:lf.source,
+      stats:[N("Primes attendues",lf.banques.primes.reduce((a, x) => a + x.montant, 0),"€",`${lf.banques.primes.length} primes`), T("Prochaine","16–20 nov.","Monabanq 20 € + 60 €"),
+        N("Virement coffre Dubaï",lf.coffre.virement,"€",`le ${lf.coffre.jour} de chaque mois`), N("Objectif Dubaï",lf.coffre.objectif,"€","juillet 2027")],
+      sections:[{title:"Primes à surveiller", items: lf.banques.primes.map(x => `${x.nom} · ${x.montant} € · ${x.quand}`)},
+        {title:"Échéances", items: lf.banques.echeances}], note:`Source : ${lf.source}.`}
+    : {eyebrow:"Banques", name:"Banque", range:false, status:"off", stats:[T("Agenda","Non lu")]},
+    station: lf ? {eyebrow:"Voiture", name:"Station-service", range:false, status:"ok", snap:lf.source,
+      stats:[N("Prochain plein",lf.essence.montant,"€","environ"), T("Vers le",dD(lf.essence.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})),
+        N("Dans",Math.max(0, daysTo(lf.essence.date)),"j"), T("Après la paye","Oui","paye attendue le 22–25 nov.")],
+      sections:[{title:"Estimation", text:lf.essence.note}], note:`Source : ${lf.source}.`}
+    : {eyebrow:"Voiture", name:"Station-service", range:false, status:"off", stats:[T("Agenda","Non lu")]},
+    gym: lf ? {eyebrow:"Sport", name:lf.sport.nom, range:false, status:"ok", snap:lf.source,
+      stats:[N("Ce mois-ci",30,"€","novembre"), N("Ensuite",25,"€","par mois"), T("Compté dans","ton budget","434 € pour vivre"), T("Bilan","dimanche 18 h")],
+      sections:[{title:"Abonnement", text:`${lf.sport.nom} : ${lf.sport.prix}.`}], note:`Source : ${lf.source}.`}
+    : {eyebrow:"Sport", name:"Salle de sport", range:false, status:"off", stats:[T("Agenda","Non lu")]}
   };
 }
-const ORDER = ["overview","tower","shelves","counter","clients","trucks","funnel","kiosk","home","safe","shop","studio","tiktok","mairie","mail"];
+const ORDER = ["overview","tower","shelves","counter","clients","trucks","funnel","kiosk","studio","tiktok","mairie","home","safe","bank","etex","cfa","station","gym","mail"];
 
 /* ---------- Comptage animé ---------- */
 const shown = new WeakMap(); let raf = 0;
@@ -427,7 +470,7 @@ const scene = new THREE.Scene();
 const hemi = new THREE.HemisphereLight(0xFFF3E4, 0xB49F86, 1.15); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xFFE9D2, 2.6);
 sun.position.set(-22, 38, 26); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
-Object.assign(sun.shadow.camera, {left:-34, right:34, top:34, bottom:-34, near:1, far:120}); sun.shadow.bias = -.0004; sun.shadow.normalBias = .02;
+Object.assign(sun.shadow.camera, {left:-48, right:48, top:48, bottom:-48, near:1, far:150}); sun.shadow.bias = -.0004; sun.shadow.normalBias = .02;
 scene.add(sun);
 const fill = new THREE.DirectionalLight(0xCFE0FF, .35); fill.position.set(25, 18, -20); scene.add(fill);
 
@@ -567,8 +610,8 @@ function bistro(x, z, parent){ const g = grp(null, x, z, parent);
     [[-.17,-.17],[.17,-.17],[-.17,.17],[.17,.17]].forEach(([a2,b2]) => add(c, B(.04,.48,.04), 0x2F2C29, a2, .39, b2)); }); }
 
 /* --- Sol : pavés, asphalte, bordures, marquages, passages piétons --- */
-const SIZE = 64, ST = [-10, 10], SW = 3.2, groundTop = .15;
-const pave = new THREE.Mesh(B(SIZE, .3, SIZE), new THREE.MeshStandardMaterial({map:PAVE, roughness:.95})); pave.receiveShadow = true; scene.add(pave);
+const SIZE = 92, ST = [-10, 10], SW = 3.2, groundTop = .15;
+const pave = new THREE.Mesh(B(SIZE, .3, SIZE), new THREE.MeshStandardMaterial({map:PAVE, roughness:.95})); PAVE.repeat.set(20, 20); pave.receiveShadow = true; scene.add(pave);
 const asph = new THREE.MeshStandardMaterial({map:ASPHALT, roughness:.95});
 ST.forEach(p => {
   [[SIZE, SW, 0, p, true], [SW, SIZE, p, 0, false]].forEach(([w, d, x, z, alongX]) => {
@@ -681,9 +724,12 @@ reg("tower");
 /* --- Studio vidéo + antenne TikTok --- */
 H(-20, -3, 6, 5, 2, Math.PI/2, {id:"studio", wall:"#E6D8C2", noChimney:true, shopFront:true, awning:0x3B3631});
 reg("studio");
-const tiktok = grp("tiktok", -21.2, -5);
-(function(){ add(tiktok, Cy(.08, .16, 3.4, 6), 0x2F2C29, 0, 6.9, 0); add(tiktok, B(2.2, 1.3, .16), 0x16171B, 0, 8.9, 0);
-  add(tiktok, B(.3, .9, .18), 0x25F4EE, -.36, 8.9, .06); add(tiktok, B(.3, .9, .18), 0xFE2C55, .36, 8.9, .06); })();
+const tiktok = H(-15.4, -2.4, 3.8, 3.2, 1, Math.PI/2, {id:"tiktok", wall:"#EDE6DA", noChimney:true, shopFront:true, awning:0x16171B});
+(function(){ const g = tiktok, y = 2.15;
+  add(g, B(2.6, .7, .1), 0x16171B, 0, y, 1.66, true);
+  add(g, B(.14, .46, .12), 0x25F4EE, -.95, y, 1.7, true); add(g, B(.14, .46, .12), 0xFE2C55, -.75, y, 1.7, true);
+  const t = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .45), new THREE.MeshBasicMaterial({map:signTex("TikTok", "#16171B", "#FFFFFF", 72)}));
+  t.position.set(.3, y, 1.72); g.add(t); })();
 reg("tiktok");
 
 /* --- Porte systeme.io au-dessus de la rue --- */
@@ -770,6 +816,82 @@ add(billboard, B(4.4, 2.4, .2), 0x2F2C29, 0, 3.1, -.06);
 (function(){ const sc = new THREE.Mesh(new THREE.PlaneGeometry(4.1, 2.05), new THREE.MeshBasicMaterial({map:billTex})); sc.position.set(0, 3.1, .06); billboard.add(sc); })();
 reg("studio", billboard);
 
+/* --- Vie perso : alternance, école, banque, station, sport --- */
+function plate(g, txt, bg, fg, w, h, x, y, z, ry, size){
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map:signTex(txt, bg, fg, size || 56)}));
+  m.position.set(x, y, z); if (ry) m.rotation.y = ry; g.add(m); return m;
+}
+// Usine Etex (Terssac) : bardage, toit en sheds, cheminée
+const etex = grp("etex", 36, -3);
+(function(){ const y0 = .15, W = 11, D = 7, Hh = 4;
+  add(etex, B(W, Hh, D), 0xB9C0C6, 0, y0 + Hh/2, 0);
+  add(etex, B(W + .1, .5, D + .1), 0x8F989F, 0, y0 + .25, 0);
+  for (let i = 0; i < 5; i++){ const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(2.2, 0); sh.lineTo(0, 1.3); sh.closePath();
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, {depth:D, bevelEnabled:false}), M(0x9AA3AA)); m.position.set(-W/2 + i*2.2, y0 + Hh, -D/2); m.castShadow = m.receiveShadow = true; etex.add(m);
+    add(etex, B(.06, 1.1, D - .4), glassWarm, -W/2 + i*2.2 + .05, y0 + Hh + .6, 0, true); }
+  for (let i = 0; i < 6; i++) add(etex, B(1.3, .6, .06), glassWarm, -W/2 + 1 + i*1.8, y0 + 3.1, D/2 + .04, true);
+  add(etex, B(2.6, 2.6, .1), 0x6E767D, 3, y0 + 1.3, D/2 + .05);
+  for (let k = 0; k < 8; k++) add(etex, B(2.5, .04, .12), 0x5C646A, 3, y0 + .2 + k*.32, D/2 + .1, true);
+  const ch = grp(null, -3.6, -2, etex); for (let k = 0; k < 6; k++) add(ch, Cy(.45 - k*.03, .48 - k*.03, 1.4, 12), k % 2 ? 0xC65F3F : 0xF4EEE2, 0, y0 + Hh + .7 + k*1.4, 0);
+  plate(etex, "Etex · Terssac", "#FFFBF4", "#3B3631", 4, .9, -2.6, y0 + 2, D/2 + .07, 0, 60);
+  plate(etex, "Etex", "#FFFBF4", "#3B3631", 2.4, .8, W/2 + .07, y0 + 2.6, 0, Math.PI/2, 64);
+  blob(etex, W + 3, D + 3);
+})();
+reg("etex");
+// CFA Purple Campus (Albi)
+const cfa = grp("cfa", -1, 36);
+(function(){ const y0 = .15, W = 10, D = 6, Hh = 5.4;
+  add(cfa, B(W, Hh, D), M(0xEFE8DC), 0, y0 + Hh/2, 0);
+  add(cfa, B(W + .3, .3, D + .3), 0x6B4FA0, 0, y0 + Hh + .15, 0);
+  for (let f = 0; f < 3; f++) for (let c = 0; c < 6; c++){ if (f === 0 && (c === 2 || c === 3)) continue;
+    windowAt(cfa, -W/2 + .85 + c*1.66, y0 + 1 + f*1.7, D/2 + .03, 0, .9, 1.05, null, glassMat); }
+  for (let f = 0; f < 3; f++) for (let r = 0; r < 3; r++) windowAt(cfa, W/2 + .03, y0 + 1 + f*1.7, -D/2 + 1 + r*2, Math.PI/2, .9, 1.05, null, glassMat);
+  add(cfa, B(2.8, 2, .1), glassWarm, 0, y0 + 1, D/2 + .04, true);
+  add(cfa, B(3.6, .18, 1.6), 0x6B4FA0, 0, y0 + 2.3, D/2 + .8);
+  plate(cfa, "Purple Campus · CFA", "#6B4FA0", "#FFFBF4", 4.6, .8, 0, y0 + 2.95, D/2 + .06, 0, 50);
+  add(cfa, Cy(.05, .05, 4.5, 6), 0x2F2C29, W/2 + 1.2, y0 + 2.25, D/2 + 1); add(cfa, B(1, .6, .04), 0x6B4FA0, W/2 + 1.7, y0 + 4.1, D/2 + 1);
+  blob(cfa, W + 3, D + 3);
+})();
+add(scene, B(12, .1, 4.5), 0xA3B27C, -1, groundTop + .03, 42.4, true);
+reg("cfa");
+// Banque & primes
+const bank = grp("bank", 36, 15);
+(function(){ const y0 = .15, W = 6, D = 5, Hh = 3.6;
+  add(bank, B(W, Hh, D), M(0xF3ECDF), 0, y0 + Hh/2, 0);
+  add(bank, B(W + .4, .35, D + .4), 0xE4D6BF, 0, y0 + Hh + .17, 0);
+  add(bank, B(4.4, .25, 1.4), 0xE4D6BF, 0, y0 + .12, D/2 + .7);
+  [-1.6, -.55, .55, 1.6].forEach(x => add(bank, Cy(.16, .18, 2.9, 12), 0xF7F1E6, x, y0 + 1.7, D/2 + 1.1));
+  add(bank, B(4.2, .3, .6), 0xEDE2CF, 0, y0 + 3.3, D/2 + 1.1);
+  plate(bank, "Banque · primes", "#FFFBF4", "#3B3631", 3, .55, 0, y0 + 3.3, D/2 + 1.42, 0, 58);
+  add(bank, B(1.2, 1.9, .1), 0x6E4E36, 0, y0 + .95, D/2 + .04);
+  const coin = add(bank, Cy(.5, .5, .12, 24), M(0xD9B45A, {metalness:.8, roughness:.25}), W/2 + .08, y0 + 2.6, 0); coin.rotation.z = Math.PI/2;
+  blob(bank, W + 3, D + 4);
+})();
+reg("bank");
+// Station-service
+const station = grp("station", -36, 2);
+(function(){ const y0 = .15;
+  add(station, B(7, .35, 4.5), 0xD97757, 0, y0 + 3.3, 0);
+  [[-3,-1.9],[3,-1.9],[-3,1.9],[3,1.9]].forEach(([x,z]) => add(station, B(.25, 3.2, .25), 0xF4EEE2, x, y0 + 1.6, z));
+  [-1.4, 1.4].forEach(x => { add(station, B(.7, 1.5, .5), 0xF4EEE2, x, y0 + .75, 0); add(station, B(.5, .35, .52), 0x2F2C29, x, y0 + 1.15, 0, true); add(station, B(.8, .12, .6), 0xC65F3F, x, y0 + 1.55, 0); });
+  add(station, B(3, 2.4, 2.6), M(0xEFE8DC), 0, y0 + 1.2, -4.2); add(station, B(1.8, 1, .06), glassWarm, 0, y0 + 1.2, -2.88, true);
+  add(station, B(.25, 3.6, .25), 0x2F2C29, 4.4, y0 + 1.8, 2.6);
+  plate(station, "Carburant", "#D97757", "#FFFBF4", 1.6, .55, 4.4, y0 + 3.4, 2.74, 0, 64);
+  blob(station, 9, 10);
+})();
+reg("station");
+// Salle de sport
+const gym = grp("gym", 17, 36);
+(function(){ const y0 = .15, W = 6, D = 5, Hh = 3.2;
+  add(gym, B(W, Hh, D), M(0x3E3B39), 0, y0 + Hh/2, 0);
+  add(gym, B(W - .8, 2.2, .1), glassWarm, 0, y0 + 1.3, D/2 + .04, true);
+  plate(gym, "Basic-Fit", "#D97757", "#FFFBF4", 3, .6, 0, y0 + 2.8, D/2 + .06, 0, 64);
+  for (let i = 0; i < 3; i++){ const db = grp(null, -1.6 + i*1.6, D/2 - .8, gym); add(db, Cy(.06, .06, .9, 8), 0x9AA3AA, 0, y0 + .4, 0).rotation.z = Math.PI/2; [-.4, .4].forEach(x => add(db, Cy(.2, .2, .12, 12), 0x2F2C29, x, y0 + .4, 0).rotation.z = Math.PI/2); }
+  blob(gym, W + 3, D + 3);
+})();
+reg("gym");
+[[30,-10.5],[42,-10.5],[30,8],[42,8],[-8,42],[6,42],[-30,-3],[-30,8],[24,42],[12,42]].forEach(([x,z]) => tree(x, z, 1));
+
 /* --- Boîte aux lettres --- */
 const mail = grp("mail", 7.3, 4.5);
 (function(){ add(mail, Cy(.06,.06,1.3,6), 0x2F2C29, 0, .8, 0); add(mail, B(.95,.7,.65), 0xD97757, 0, 1.7, 0); add(mail, B(.6,.08,.05), 0x2F2C29, 0, 1.8, .34); })();
@@ -820,7 +942,7 @@ function buildClients(d){
 /* --- Alertes : triangle rouge flottant --- */
 const ALERT_MAT = new THREE.SpriteMaterial({map:tex((x, w, h) => { x.fillStyle = "#C8442F"; x.beginPath(); x.moveTo(64, 10); x.lineTo(120, 112); x.lineTo(8, 112); x.closePath(); x.fill();
   x.fillStyle = "#fff"; x.font = "bold 70px Arial"; x.textAlign = "center"; x.fillText("!", 64, 102); }, 128, 128), depthTest:false});
-const ALERT_AT = {kiosk:[16.3,5,-5.6], mairie:[-17,8.2,-16.5], studio:[-20,6.6,-3], shelves:[-4.5,4.2,0], counter:[-1.6,3,-3.2], tiktok:[-21.2,10.5,-5], overview:[0,5.8,-.8], funnel:[10,6.2,5], home:[-20,7.6,20], safe:[-15,3.4,20.3]};
+const ALERT_AT = {cfa:[-1,7.4,36], kiosk:[16.3,5,-5.6], mairie:[-17,8.2,-16.5], studio:[-20,6.6,-3], shelves:[-4.5,4.2,0], counter:[-1.6,3,-3.2], tiktok:[-15.4,4.6,-2.4], overview:[0,5.8,-.8], funnel:[10,6.2,5], home:[-20,7.6,20], safe:[-15,3.4,20.3]};
 const markers = {};
 function updateAlerts(){
   for (const id in ALERT_AT){

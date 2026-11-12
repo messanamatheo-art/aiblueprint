@@ -55,5 +55,72 @@
   },
   "todo": [],
   "apeNote": ""
+ },
+ "mail": {
+  "source": "",
+  "nonLus": 0,
+  "note": ""
+ },
+ "life": {
+  "source": "",
+  "alternance": {
+   "entreprise": "",
+   "site": "",
+   "diplome": "",
+   "ecole": "",
+   "horairesCFA": "",
+   "periodes": [
+    {
+     "type": "entreprise|cfa|event",
+     "du": "2026-01-01",
+     "au": "2026-01-05",
+     "label": ""
+    }
+   ],
+   "paye": {
+    "montant": 0,
+    "du": "",
+    "au": "",
+    "derniere": "",
+    "note": ""
+   },
+   "tickets": {
+    "solde": "",
+    "declarer": "",
+    "recharge": "",
+    "regle": ""
+   },
+   "convention": "",
+   "ecoleTodo": []
+  },
+  "banques": {
+   "primes": [
+    {
+     "nom": "",
+     "montant": 0,
+     "quand": ""
+    }
+   ],
+   "echeances": []
+  },
+  "coffre": {
+   "nom": "",
+   "virement": 0,
+   "jour": 1,
+   "debut": "",
+   "fin": "",
+   "objectif": 0,
+   "note": ""
+  },
+  "essence": {
+   "date": "",
+   "montant": 0,
+   "note": ""
+  },
+  "sport": {
+   "nom": "",
+   "prix": ""
+  },
+  "bilan": ""
  }
 }
