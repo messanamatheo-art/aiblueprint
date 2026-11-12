@@ -288,9 +288,10 @@ function buildItems(d){
       alerts: cal.retard ? [`${cal.retard} vidéo(s) prévue(s) pas encore marquée(s) comme publiée(s).`] : [], note:`Source : ${ex.calendar.source}.`}
     : {eyebrow:"Contenu", name:"Studio vidéo", range:false, status:"off", stats:[T("Calendrier","Non lu")]},
     tiktok: tk ? {eyebrow:"Audience", name:"Antenne TikTok", range:false, status: tk.connected ? "ok" : "off", snap:"Relevé Beacons du 12 nov. 2026",
-      stats:[N("Abonnés",tk.followers), N("Vidéos remontées",tk.postsSynced,"","via Beacons"),
+      stats:[N("Abonnés",tk.followers), tk.views ? N("Vues totales",tk.views,"",`${tk.postsSynced} vidéo(s)`) : N("Vidéos remontées",tk.postsSynced,"","via Beacons"),
         cal && cal.next[0] ? T("Prochaine vidéo",fmtSlot(cal.next[0])) : T("Prochaine vidéo","—"), N("Comptes publicitaires",tk.adAccounts)],
-      sections:[{title:"Compte", text:`${tk.handle} relié à Beacons par la connexion officielle TikTok : abonnés, vues, likes, commentaires et partages remonteront après chaque publication.`},
+      sections:[...(tk.videos && tk.videos.length ? [{title:`Meilleures vidéos (${nf(tk.views || 0)} vues au total)`, items: tk.videos.slice(0, 6).map(v => `${v.title} · ${nf(v.views || 0)} vues · ${nf(v.likes || 0)} j'aime · ${nf(v.comments || 0)} comm.`)}] : []),
+        {title:"Compte", text:`${tk.handle} relié à Beacons par la connexion officielle TikTok : abonnés, vues, likes, commentaires et partages remontent après chaque publication.`},
         {title:"Publicité", text:"Aucun compte publicitaire TikTok Ads pour l'instant (vérification d'entreprise en cours)."}],
       note:`Source : ${tk.source}.`}
     : {eyebrow:"Audience", name:"Antenne TikTok", range:false, status:"off", stats:[T("TikTok","Non lu")]},

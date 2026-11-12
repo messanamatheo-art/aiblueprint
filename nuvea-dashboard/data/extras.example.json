@@ -18,7 +18,16 @@
   "connected": false,
   "followers": 0,
   "postsSynced": 0,
-  "adAccounts": 0
+  "adAccounts": 0,
+  "views": 0,
+  "videos": [
+   {
+    "title": "Exemple",
+    "views": 0,
+    "likes": 0,
+    "comments": 0
+   }
+  ]
  },
  "calendar": {
   "source": "",
