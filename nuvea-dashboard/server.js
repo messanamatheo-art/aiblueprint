@@ -1,4 +1,4 @@
-// Nuvéa Monde : petit serveur sans dépendance.
+// TIA Monde : petit serveur sans dépendance.
 // Lit Stripe en lecture seule et sert le dashboard 3D. La clé vient uniquement de .env.
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -236,4 +236,4 @@ http.createServer(async (req, res) => {
     res.writeHead(e.code === "ENOENT" ? 404 : 500, { "Content-Type": "text/plain; charset=utf-8" });
     res.end(e.code === "ENOENT" ? "Introuvable" : "Erreur serveur");
   }
-}).listen(PORT, "0.0.0.0", () => console.log(`Nuvéa Monde : http://localhost:${PORT}  (Stripe relu toutes les ${REFRESH} s)`));
+}).listen(PORT, "0.0.0.0", () => console.log(`TIA Monde : http://localhost:${PORT}  (Stripe relu toutes les ${REFRESH} s)`));

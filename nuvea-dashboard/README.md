@@ -1,6 +1,6 @@
-# Nuvéa Monde
+# TIA Monde
 
-Dashboard 3D (Three.js) de l'activité Nuvéa : une ville isométrique où chaque élément est cliquable et ouvre ses statistiques. Les chiffres viennent de Stripe, en lecture seule, et la page se met à jour toutes les minutes.
+Dashboard 3D (Three.js) de Trading IA Academy (formation et produits digitaux) : une ville isométrique où chaque élément est cliquable et ouvre ses statistiques. Les chiffres viennent de Stripe, en lecture seule, et la page se met à jour toutes les minutes.
 
 ## Lancer en local
 
