@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;1,8..60,500&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 <style>
 /* Plein écran : la ville remplit la fenêtre, quatre panneaux flottent par-dessus.
    Palette Claude : crème, orange, terre cuite, gris chaud. Look clair assumé, le soir assombrit la scène. */
@@ -87,6 +88,7 @@ button,select{font:inherit;color:inherit}
 #tools{right:max(14px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:3px;padding:4px}
 #tools button{width:32px;height:30px;border:0;background:none;border-radius:7px;cursor:pointer;font-size:15px}
 #tools button:hover{background:#EFE9DE}
+#fps{align-self:center;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;padding:0 8px 0 4px;min-width:52px;text-align:right}
 
 #tip{position:absolute;pointer-events:none;background:#2A2724;color:#FBF6EF;font-size:11.5px;padding:5px 8px;border-radius:7px;white-space:nowrap;transform:translate(12px,-120%);opacity:0;transition:opacity .12s}
 #tip.on{opacity:1}#tip span{opacity:.7;margin-left:6px}
@@ -148,6 +150,7 @@ button,select{font:inherit;color:inherit}
     <button id="zout" aria-label="Dézoomer">−</button>
     <button id="zin" aria-label="Zoomer">+</button>
     <button id="home" aria-label="Recentrer">⌂</button>
+    <span id="fps" title="Images par seconde (limitées par la fréquence de ton écran)">— fps</span>
   </div>
 
   <div id="tip"></div>
@@ -384,10 +387,10 @@ async function refresh(){
    ===================================================================== */
 const canvas = $("gl");
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .82;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false; // décor fixe : la carte d'ombres est calculée une fois
 const scene = new THREE.Scene();
 const hemi = new THREE.HemisphereLight(0xFFF3E4, 0xB49F86, 1.15); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xFFE9D2, 2.6);
@@ -440,8 +443,11 @@ function grp(id, x, z, parent){ const g = new THREE.Group(); g.position.set(x, 0
 function blob(p, w, d, x, z){ const s = new THREE.Mesh(new THREE.PlaneGeometry(w, d), BLOB_MAT); s.rotation.x = -Math.PI/2; s.position.set(x||0, .17, z||0); s.renderOrder = 1; p.add(s); }
 // rend un groupe cliquable : matériaux clonés pour le surligner seul
 function reg(id, g){
+  const cache = new Map();
   (g||groups[id]).traverse(o => { if (o.isMesh && o.material !== BLOB_MAT && o.material.isMeshStandardMaterial){
-    if (!o.userData.own && !SHARED.has(o.material) && !houseGlass.includes(o.material)){ o.material = o.material.clone(); o.userData.own = true; }
+    if (!o.userData.own && !SHARED.has(o.material) && !houseGlass.includes(o.material)){
+      if (!cache.has(o.material)) cache.set(o.material, o.material.clone());
+      o.material = cache.get(o.material); o.userData.own = true; }
     o.userData.id = id; if (!pick.includes(o)) pick.push(o); } });
 }
 
@@ -685,6 +691,7 @@ for (let i = 0; i < 2; i++){
   add(t, B(2.4, 1.35, 1.25), 0xFBF6EC, -.35, 1.05, 0); add(t, B(2.42, .22, 1.27), 0xD97757, -.35, .85, 0);
   add(t, B(1, 1, 1.2), 0xC65F3F, 1.25, .85, 0); add(t, B(.06, .45, 1), glassMat, 1.76, 1.05, 0, true); add(t, B(.7, .4, 1.22), glassMat, 1.2, 1.12, 0, true);
   [[-1.1,.6],[-1.1,-.6],[1.15,.6],[1.15,-.6]].forEach(([x,z]) => { const w = add(t, Cy(.27,.27,.2,12), 0x24211F, x, .3, z); w.rotation.x = Math.PI/2; });
+  t.traverse(o => { if (o.isMesh) o.castShadow = false; });
   blob(t, 3.6, 2);
   t.userData.offset = i * .5; trucks.push(t); truckG.add(t);
 }
@@ -701,6 +708,7 @@ function person(color, i){
   [-.27, .27].forEach(x => add(p, B(.1, .55, .12), color, x, 1.08, 0));
   add(p, new THREE.SphereGeometry(.17, 12, 10), SKIN[i % 4], 0, 1.6, 0);
   add(p, new THREE.SphereGeometry(.18, 12, 8, 0, Math.PI*2, 0, Math.PI/2), HAIR[i % 4], 0, 1.64, -.01);
+  p.traverse(o => { if (o.isMesh) o.castShadow = false; });
   blob(p, .8, .8); p.userData.legs = legs; return p;
 }
 function buildClients(d){
@@ -772,8 +780,7 @@ let camAnim = null;
 function tween(target, zoom, pos){ const to = {t:target.clone(), z:zoom, p:pos ? pos.clone() : null};
   if (reduce){ controls.target.copy(to.t); cam.zoom = to.z; if (to.p) cam.position.copy(to.p); cam.updateProjectionMatrix(); return; }
   camAnim = {t0:performance.now(), fT:controls.target.clone(), fZ:cam.zoom, fP:cam.position.clone(), ...to}; }
-function focusOn(id){ const g = groups[id]; if (!g || id === "trucks" || id === "clients") return;
-  const c = new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3());
+function focusOn(id){ const c0 = focusCenter[id]; if (!c0) return; const c = c0.clone();
   tween(c, Math.max(cam.zoom, 2.1), c.clone().add(cam.position.clone().sub(controls.target))); }
 function orbit(angle){ const off = cam.position.clone().sub(controls.target); off.applyAxisAngle(new THREE.Vector3(0,1,0), angle); tween(controls.target, cam.zoom, controls.target.clone().add(off)); }
 $("rotL").onclick = () => orbit(Math.PI/4); $("rotR").onclick = () => orbit(-Math.PI/4);
@@ -786,10 +793,12 @@ let hovered = null, down = null;
 function hit(e){ ptr.set((e.clientX/innerWidth)*2 - 1, -(e.clientY/innerHeight)*2 + 1); ray.setFromCamera(ptr, cam);
   const h = ray.intersectObjects(pick, false)[0]; return h ? h.object.userData.id : null; }
 canvas.addEventListener("pointerdown", e => { down = {x:e.clientX, y:e.clientY, b:e.button}; canvas.classList.add("drag"); tip.classList.remove("on"); });
-canvas.addEventListener("pointermove", e => { if (down) return;
+let pendingMove = null;
+canvas.addEventListener("pointermove", e => { if (!down) pendingMove = e; });
+function handleHover(e){
   const id = hit(e); hovered = id; canvas.classList.toggle("over", !!id);
   if (id && ITEMS[id] && ITEMS[id].name){ tip.innerHTML = `${esc(ITEMS[id].name)}<span>${esc(ITEMS[id].eyebrow)}</span>`; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.add("on"); }
-  else tip.classList.remove("on"); });
+  else tip.classList.remove("on"); }
 canvas.addEventListener("pointerup", e => { canvas.classList.remove("drag");
   if (down && down.b === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6){ const id = hit(e); id ? openCard(id) : closeCard(); } down = null; });
 canvas.addEventListener("pointerleave", () => { hovered = null; tip.classList.remove("on"); });
@@ -817,12 +826,49 @@ function frame(now){
     const s = onLoop(R.r, R.s, R.t, reduce ? w.ph : (t*(w.route === 2 ? .035 : .012) + w.ph));
     p.position.set(s.x + (w.route ? w.lane : 0), groundTop, s.z + (w.route ? 0 : w.lane)); p.rotation.y = s.a + Math.PI/2;
     if (!reduce) p.userData.legs.forEach((l, k) => l.rotation.x = Math.sin(t*7 + w.ph*10 + k*Math.PI)*.45); });
+  if (pendingMove){ handleHover(pendingMove); pendingMove = null; }
   paint(t, dt); controls.update(); renderer.render(scene, cam);
+  // compteur fps et résolution adaptative : on baisse la netteté si la machine n'arrive pas à suivre
+  fpsN++; fpsAcc += (now - fpsLast) / 1000; fpsLast = now;
+  if (fpsAcc >= 1){ const fps = fpsN / fpsAcc; $("fps").textContent = `${Math.round(fps)} fps`;
+    if (fps < 50 && dpr > 1){ dpr = Math.max(1, dpr - .25); renderer.setPixelRatio(dpr); resize(); }
+    fpsN = 0; fpsAcc = 0; }
   requestAnimationFrame(frame);
+}
+let fpsN = 0, fpsAcc = 0, fpsLast = performance.now(), dpr = Math.min(devicePixelRatio, 2);
+
+/* --- Fusion du décor : des milliers d'objets ramenés à quelques dizaines d'appels de dessin --- */
+const focusCenter = {};
+function bakeStatic(){
+  scene.updateMatrixWorld(true);
+  for (const id in groups) if (id !== "trucks" && id !== "clients") focusCenter[id] = new THREE.Box3().setFromObject(groups[id]).getCenter(new THREE.Vector3());
+  const dynamic = new Set(); [groups.trucks, groups.clients].forEach(g => g.traverse(o => dynamic.add(o)));
+  const buckets = new Map(), victims = [];
+  scene.traverse(o => {
+    if (!o.isMesh || dynamic.has(o)) return;
+    const id = o.userData.id || "", key = `${id}|${o.material.uuid}|${o.castShadow ? 1 : 0}|${o.renderOrder}`;
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    g.applyMatrix4(o.matrixWorld);
+    Object.keys(g.attributes).forEach(k => { if (!["position", "normal", "uv"].includes(k)) g.deleteAttribute(k); });
+    if (!g.attributes.uv) g.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (!g.attributes.normal) g.computeVertexNormals();
+    g.clearGroups(); g.morphAttributes = {};
+    if (!buckets.has(key)) buckets.set(key, {geos:[], mat:o.material, id, cast:o.castShadow, own:o.userData.own, ro:o.renderOrder});
+    buckets.get(key).geos.push(g); victims.push(o);
+  });
+  victims.forEach(o => o.parent.remove(o));
+  pick.length = 0;
+  buckets.forEach(b => {
+    const m = new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(b.geos), b.mat);
+    m.castShadow = b.cast; m.receiveShadow = true; m.renderOrder = b.ro; m.matrixAutoUpdate = false;
+    if (b.id){ m.userData.id = b.id; m.userData.own = b.own; pick.push(m); }
+    scene.add(m);
+  });
+  renderer.shadowMap.needsUpdate = true;
 }
 
 ITEMS = Object.fromEntries(ORDER.map(id => [id, {status:"off"}]));
-buildClients(null); resize(); requestAnimationFrame(frame);
+bakeStatic(); buildClients(null); renderer.setPixelRatio(dpr); resize(); requestAnimationFrame(frame);
 refresh(); if (!SNAPSHOT) setInterval(refresh, 60000);
 </script>
 </body>
