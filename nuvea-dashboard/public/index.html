@@ -8,12 +8,11 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <style>
-/* Plein écran : la ville occupe toute la fenêtre, quatre panneaux flottent par-dessus
-   (résumé en haut à gauche, carte à droite, aide en bas à gauche, outils en bas à droite).
-   Palette Claude : crème, orange, terre cuite, gris chaud. Un seul look clair, assumé. */
+/* Plein écran : la ville remplit la fenêtre, quatre panneaux flottent par-dessus.
+   Palette Claude : crème, orange, terre cuite, gris chaud. Look clair assumé, le soir assombrit la scène. */
 :root{
   color-scheme:light;
-  --bg:#F4F1EA; --panel:rgba(255,253,249,.94); --solid:#FFFDF9; --fg:#1F1E1D; --muted:#6F6A61; --line:#E6DFD2;
+  --bg:#F4F1EA; --panel:rgba(255,253,249,.95); --solid:#FFFDF9; --fg:#1F1E1D; --muted:#6F6A61; --line:#E6DFD2;
   --accent:#D97757; --accent-strong:#B9583A; --accent-soft:#FBEDE6; --alert:#C8442F; --alert-soft:#FCE9E4;
   --ok:#4F7A4A; --morning:#3F7FC1; --noon:#D9583C; --evening:#4E9A62;
   --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --f-display:"Source Serif 4",Georgia,serif;
@@ -21,8 +20,8 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font:14px/1.45 var(--f-body);overflow:hidden}
-#app{position:relative;height:100%;background:radial-gradient(130% 100% at 50% 0%,#FBF4EC 0%,#EFE8DC 70%);transition:background 1s}
-#app.night{background:radial-gradient(130% 100% at 50% 0%,#3A3330 0%,#211E1C 75%)}
+#app{position:relative;height:100%;background:linear-gradient(180deg,#F6EEE3 0%,#EDE4D6 100%)}
+#app.night{background:linear-gradient(180deg,#2B2A33 0%,#1C1B20 100%)}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
 #gl.over{cursor:pointer}#gl.drag{cursor:grabbing}
 .panel{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:12px;
@@ -30,8 +29,7 @@ body{background:var(--bg);color:var(--fg);font:14px/1.45 var(--f-body);overflow:
 button,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-/* Résumé */
-#summary{left:max(14px,env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:12px 14px;max-width:min(470px,calc(100% - 28px))}
+#summary{left:max(14px,env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:12px 14px;max-width:min(480px,calc(100% - 28px))}
 .s-head{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px}
 .s-dot{width:9px;height:9px;border-radius:2px;background:var(--accent)}
 .s-range{color:var(--muted);font-size:11.5px;margin:1px 0 9px 16px}
@@ -40,19 +38,18 @@ button,select{font:inherit;color:inherit}
 .s-kpi .l{font-size:10.5px;color:var(--muted);white-space:nowrap}
 .s-kpi .v{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .s-kpi .v.alert{color:var(--alert)}
-.s-live{font-size:11px;color:var(--muted);margin:8px 0 0}
-.s-live b{color:var(--ok);font-weight:600}
+.s-perso{margin:8px 0 0;font-size:12px;display:flex;flex-wrap:wrap;gap:4px 12px;border-top:1px dashed var(--line);padding-top:7px}
+.s-perso b{font-variant-numeric:tabular-nums}
+.s-live{font-size:11px;color:var(--muted);margin:6px 0 0}
 
-/* Barre du haut à droite */
 #top{right:max(14px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));display:flex;gap:6px;padding:5px;align-items:center}
-#pickEl{border:1px solid var(--line);background:var(--solid);border-radius:8px;padding:5px 8px;font-size:12.5px;max-width:180px}
+#pickEl{border:1px solid var(--line);background:var(--solid);border-radius:8px;padding:5px 8px;font-size:12.5px;max-width:190px}
 .seg{display:flex;background:#EFE9DE;border-radius:8px;padding:2px}
 .seg button{border:0;background:none;font-size:12px;padding:4px 9px;border-radius:6px;cursor:pointer;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
 
-/* Carte de statistiques */
 #card{right:max(14px,env(safe-area-inset-right,0px));top:calc(64px + env(safe-area-inset-top,0px));bottom:calc(64px + env(safe-area-inset-bottom,0px));
-  width:min(330px,calc(100% - 28px));padding:16px;overflow:auto;opacity:0;transform:translateX(12px);pointer-events:none;transition:opacity .25s,transform .25s}
+  width:min(350px,calc(100% - 28px));padding:16px;overflow:auto;opacity:0;transform:translateX(12px);pointer-events:none;transition:opacity .25s,transform .25s}
 #card.open{opacity:1;transform:none;pointer-events:auto}
 .eyebrow{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent-strong);font-weight:600}
 #card h2{font:600 1.35rem/1.15 var(--f-display);margin:3px 30px 2px 0}
@@ -61,7 +58,7 @@ button,select{font:inherit;color:inherit}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
 .st{background:var(--solid);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-width:0}
 .st dt{font-size:11px;color:var(--muted)}
-.st dd{margin:1px 0 0;font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.st dd{margin:1px 0 0;font-weight:700;font-size:1.22rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .st dd small{font-size:.75rem;color:var(--muted);font-weight:500;margin-left:2px}
 .st dd.txt{font-size:.95rem;padding-top:3px}
 .st .sub{font-size:10.5px;color:var(--muted);margin-top:1px}
@@ -71,27 +68,28 @@ button,select{font:inherit;color:inherit}
 .spark-axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:2px}
 .lines{font-size:12.5px;margin:6px 0 0;padding:0;list-style:none}
 .lines li{margin:2px 0}
-.txtsec{font-size:12.5px;color:var(--fg);margin:0}
+.txtsec{font-size:12.5px;margin:0}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.tbl th{font-weight:600;color:var(--muted);text-align:right;padding:3px 4px;font-size:10.5px}
+.tbl td{text-align:right;padding:3px 4px;border-top:1px solid var(--line)}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl tr.risk td{color:var(--alert)}
+.tblwrap{overflow-x:auto}
 .alertbox{background:var(--alert-soft);border-radius:9px;padding:9px 11px;font-size:12.5px}
 .alertbox h3{color:var(--alert)}
 .alertbox ul{margin:0;padding-left:16px}
-.next{margin-top:12px;background:var(--accent-soft);border-radius:9px;padding:9px 11px;font-size:12.5px}
 
-/* Aide et légende */
-#help{left:max(14px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:7px 11px;font-size:11.5px;color:var(--muted);max-width:calc(100% - 200px)}
+#help{left:max(14px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:7px 11px;font-size:11.5px;color:var(--muted);max-width:calc(100% - 220px)}
 #help b{color:var(--fg);font-weight:600}
 .lg{display:flex;gap:10px;flex-wrap:wrap;margin-top:3px}
-.lg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:0}
+.lg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
 
-/* Outils */
 #tools{right:max(14px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:3px;padding:4px}
 #tools button{width:32px;height:30px;border:0;background:none;border-radius:7px;cursor:pointer;font-size:15px}
 #tools button:hover{background:#EFE9DE}
 
-/* Infobulle */
 #tip{position:absolute;pointer-events:none;background:#2A2724;color:#FBF6EF;font-size:11.5px;padding:5px 8px;border-radius:7px;white-space:nowrap;transform:translate(12px,-120%);opacity:0;transition:opacity .12s}
 #tip.on{opacity:1}#tip span{opacity:.7;margin-left:6px}
-
 #err{left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));padding:8px 12px;background:var(--alert-soft);color:var(--alert);font-size:12.5px}
 
 @media (max-width:760px){
@@ -108,20 +106,20 @@ button,select{font:inherit;color:inherit}
 <div id="app">
   <canvas id="gl" aria-label="Ville 3D de Nuvéa. Le menu « Tous les éléments » ouvre les mêmes cartes au clavier."></canvas>
 
-  <section class="panel" id="summary" aria-label="Résumé des 30 derniers jours">
+  <section class="panel" id="summary" aria-label="Résumé">
     <div class="s-head"><span class="s-dot"></span>Nuvéa · 30 derniers jours</div>
-    <div class="s-range" id="s-range">Lecture de Stripe…</div>
+    <div class="s-range" id="s-range">Lecture des données…</div>
     <div class="s-kpis">
       <div class="s-kpi"><div class="l">Chiffre d'affaires</div><div class="v" id="k-ca">—</div></div>
       <div class="s-kpi"><div class="l">Clients</div><div class="v" id="k-cl">—</div></div>
       <div class="s-kpi"><div class="l">Panier moyen</div><div class="v" id="k-avg">—</div></div>
       <div class="s-kpi"><div class="l">Alertes</div><div class="v alert" id="k-al">—</div></div>
     </div>
+    <div class="s-perso" id="s-perso"></div>
     <p class="s-live" id="s-live"></p>
   </section>
 
   <div class="panel" id="top">
-    <label for="pickEl" class="sr" hidden>Élément</label>
     <select id="pickEl" aria-label="Ouvrir la carte d'un élément"><option value="">Tous les éléments</option></select>
     <div class="seg" role="group" aria-label="Lumière">
       <button data-light="auto" aria-pressed="true">Auto</button>
@@ -158,16 +156,18 @@ button,select{font:inherit;color:inherit}
 
 <script>
 /* =====================================================================
-   DONNÉES  —  /api/stats (Stripe, lecture seule), relu toutes les minutes
+   DONNÉES : /api/stats (Stripe + systeme.io + budget), relu toutes les minutes
    ===================================================================== */
 const $ = id => document.getElementById(id);
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const nf = (n, d) => Number(n).toLocaleString("fr-FR", {minimumFractionDigits:d||0, maximumFractionDigits:d||0});
 let CUR = "€";
 const money = v => `${nf(v, v % 1 ? 2 : 0)} ${CUR}`;
+const eur = v => `${nf(v, 2)} €`;
 const dShort = iso => new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLocaleDateString("fr-FR", {day:"numeric", month:"short"});
 const dLong = iso => new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"short"});
-const SNAP = "Hors Stripe : relevé du 12 nov. 2026.";
+const COCKPIT = "Cockpit TIA, relevé du 11 nov. 2026";
+const SNAP = "Relevé du 12 nov. 2026, hors Stripe.";
 let DATA = null, ITEMS = {}, selected = null;
 
 function curSymbol(c){
@@ -179,82 +179,102 @@ const N = (label, n, unit, sub) => ({label, n:n||0, unit:unit||"", sub});
 const T = (label, text, sub) => ({label, text, sub});
 
 function buildItems(d){
-  const ch = d.charges.ok ? d.charges : null, pi = d.intents.ok ? d.intents : null,
-        se = d.sessions.ok ? d.sessions : null, pr = d.products.ok ? d.products : null,
-        ba = d.balance.ok ? d.balance : null, ac = d.account.ok ? d.account : null;
+  const ok = s => s && s.ok ? s : null;
+  const ch = ok(d.charges), pi = ok(d.intents), se = ok(d.sessions), pr = ok(d.products), ba = ok(d.balance), ac = ok(d.account),
+        sio = ok(d.systeme), bu = ok(d.budget);
   CUR = curSymbol((ch && ch.currency) || (ba && ba.currency) || (ac && ac.currency));
-  const err = s => s && !s.ok ? `Stripe : ${s.error}.` : null;
+  const err = s => s && !s.ok ? s.error : null;
   const enCours = (ch ? ch.pending : 0) + (pi ? pi.inProgress : 0);
-  const perDay = ch ? ch.gross / 30 : 0;
   const top = se ? se.top : [];
   const formation = top.find(p => /formation|trading/i.test(p.name));
   const bestLines = ch && ch.best
     ? [`Meilleur jour : ${dLong(ch.best.date)}, ${money(ch.best.amount)}`, `Jour le plus calme : ${dLong(ch.calm.date)}, ${money(ch.calm.amount)}`]
     : ["Aucune vente sur la période : pas encore de meilleur jour."];
-  const cmdText = pi || ch ? (enCours ? `${enCours} paiement(s) en traitement ou à valider dans Stripe.` : "Aucun paiement en traitement ni à valider dans Stripe.") : "Non lu.";
 
-  const it = {
+  let budgetAlerts = [], projRows = null;
+  if (bu){
+    if (bu.missing.length) budgetAlerts.push(`Charges non renseignées (${bu.missing.length}) : le reste à vivre ne peut pas être calculé.`);
+    if (bu.projection){
+      projRows = bu.projection;
+      const risky = projRows.filter(r => r.epargneUtilisee > 0);
+      if (risky.length) budgetAlerts.push(`Épargne entamée dès ${risky[0].mois}.`);
+      if (bu.resteAVivre < 0) budgetAlerts.push(`Charges supérieures au salaire de ${eur(-bu.resteAVivre)} par mois.`);
+    }
+  }
+  const sioErr = err(d.systeme);
+
+  return {
     overview:{eyebrow:"Vue d'ensemble", name:"La boutique Nuvéa", range:true, status: ch ? "ok" : "wait",
-      stats:[N("Chiffre d'affaires",ch&&ch.gross,CUR,`≈ ${money(perDay)} par jour`), N("Clients",ch&&ch.customers,"",`≈ ${nf((ch?ch.customers:0)/30,1)} par jour`),
+      stats:[N("Chiffre d'affaires",ch&&ch.gross,CUR,`≈ ${money(ch?ch.gross/30:0)} par jour`), N("Clients",ch&&ch.customers,"",`≈ ${nf((ch?ch.customers:0)/30,1)} par jour`),
         ch && ch.avg !== null ? N("Panier moyen",ch.avg,CUR) : T("Panier moyen","—","Aucune vente à diviser"), N("Commandes en cours",enCours)],
-      spark:true, lines:bestLines, sections:[{title:"Commandes en cours", text:cmdText}],
-      note: err(d.charges) || "Toutes tes ventes Stripe des 30 derniers jours, heure de Paris."},
+      spark:true, lines:bestLines,
+      sections:[{title:"Commandes en cours", text: enCours ? `${enCours} paiement(s) en traitement ou à valider.` : "Aucun paiement en traitement ni à valider dans Stripe."}],
+      note: err(d.charges) ? `Stripe : ${err(d.charges)}.` : "Toutes tes ventes Stripe des 30 derniers jours, heure de Paris."},
     tower:{eyebrow:"Produit", name:"Formation Trading IA", range:true, status: se ? "ok" : "wait",
       stats:[N("Chiffre d'affaires",formation&&formation.revenue,CUR), N("Ventes",formation&&formation.qty),
-        T("Stock","Illimité","Produit digital"), N("Part du CA",formation && ch && ch.gross ? Math.round(formation.revenue/ch.gross*100) : 0,"%")],
+        T("Prix","64 €","Page de vente"), T("Contenu","12 modules","39 leçons")],
       sections:[{title:"Comment c'est compté", text: formation ? `Ventes Checkout du produit « ${formation.name} ».` : "Aucune vente Checkout d'un produit nommé « formation » ou « trading » sur 30 jours."}],
-      note: err(d.sessions)},
+      note:`Prix et contenu : ${COCKPIT}.`},
     shelves:{eyebrow:"Étagères", name:"Packs digitaux", range:true, status: pr ? "ok" : "wait",
-      stats:[N("Produits actifs",pr&&pr.active), N("Ventes Checkout",se&&se.completed),
-        pr && pr.stock !== null ? N("Stock suivi",pr.stock,"","metadata.stock") : T("Stock","Illimité","Produits digitaux"),
-        N("CA du n°1",top[0]&&top[0].revenue,CUR)],
+      stats:[N("Produits actifs Stripe",pr&&pr.active), N("Ventes Checkout",se&&se.completed),
+        pr && pr.stock !== null ? N("Stock suivi",pr.stock,"","metadata.stock") : T("Stock","Illimité","Produits digitaux"), N("CA du n°1",top[0]&&top[0].revenue,CUR)],
       sections:[{title:"Produits les plus vendus", items: top.length ? top.map(p => `${p.name} · ${p.qty} vendu${p.qty>1?"s":""} · ${money(p.revenue)}`) : ["Aucune vente sur 30 jours."]}],
-      alerts: pr && pr.active === 0 ? ["Aucun produit actif dans Stripe : tes packs n'y sont pas encore créés."] : [],
-      note: err(d.products)},
+      alerts: pr && pr.active === 0 ? ["Aucun produit actif dans Stripe : la formation est vendue via systeme.io, qui encaisse avec Stripe."] : [],
+      note: err(d.products) ? `Stripe : ${err(d.products)}.` : ""},
     counter:{eyebrow:"Comptoir", name:"Caisse Stripe", range:false, status: ac && ac.charges_enabled ? "ok" : "wait",
       stats:[N("Solde disponible",ba&&ba.available,CUR), N("Solde en attente",ba&&ba.pending,CUR),
         N("Remboursé (30 j)",ch&&ch.refunded,CUR), T("Paiements", ac ? (ac.charges_enabled ? "Activés" : "À activer") : "—", ac ? (ac.payouts_enabled ? "Virements activés" : "Virements bloqués") : "")],
       sections:[{title:"Compte", text: ac ? ac.name : "Non lu"}],
-      alerts: ac && !ac.charges_enabled ? ["Paiements Stripe pas encore activés."] : [],
-      note: err(d.balance) || err(d.account)},
+      alerts: ac && !ac.charges_enabled ? ["Paiements Stripe pas encore activés."] : [], note:"En direct depuis Stripe."},
     clients:{eyebrow:"Clients", name:"Les clients", range:true, status: ch ? "ok" : "wait",
       stats:[N("Matin",ch&&ch.moments.matin,"","avant 12 h"), N("Midi",ch&&ch.moments.midi,"","12 h – 14 h"),
-        N("Après-midi",ch&&ch.moments.soir,"","après 14 h"), ch && ch.avg !== null ? N("Panier moyen",ch.avg,CUR) : T("Panier moyen","—")],
-      sections:[{title:"Total", text: ch ? `${ch.customers} client${ch.customers>1?"s":""} unique${ch.customers>1?"s":""}, ${ch.count} paiement${ch.count>1?"s":""}.` : "Non lu."},
-                {title:"Dans la ville", text: ch && ch.customers ? "Chaque personnage représente un client, coloré selon l'heure de son achat." : "Les silhouettes grises devant la boutique sont des places vides : aucun client sur 30 jours."}],
-      note: err(d.charges)},
+        N("Après-midi",ch&&ch.moments.soir,"","après 14 h"), sio ? N("Contacts systeme.io",sio.contacts,"",`+${sio.newContacts} en 30 j`) : T("Contacts systeme.io","Non lu")],
+      sections:[{title:"Total", text: ch ? `${ch.customers} client${ch.customers>1?"s":""} Stripe, ${ch.count} paiement${ch.count>1?"s":""}.` : "Non lu."},
+                {title:"Dans la ville", text: ch && ch.customers ? "Chaque personnage est un client, coloré selon l'heure de son achat." : "Les passants gris sont des visiteurs du quartier, pas des clients : aucun achat sur 30 jours."}]},
     trucks:{eyebrow:"Livraisons", name:"Les camionnettes", range:true, status: se || ch ? "ok" : "wait",
-      stats:[N("Livrées",se ? se.completed : ch && ch.count,"","accès envoyés"), N("En cours",enCours),
-        N("Paiements échoués",ch&&ch.failed), N("Paiements abandonnés",pi&&pi.abandoned)],
-      sections:[{title:"Comment c'est compté", text:"Une livraison = une session de paiement Checkout terminée."}],
-      note: err(d.sessions)},
-    shop:{eyebrow:"Vitrine", name:"Pages de paiement", range:true, status: se ? "ok" : "wait",
-      stats:[N("Ouvertes",se&&se.created), N("Terminées",se&&se.completed),
-        N("Conversion",se && se.created ? Math.round(se.completed/se.created*100) : 0,"%"), N("Expirées",se&&se.expired)],
-      sections:[{title:"À savoir", text:"Compte les pages de paiement Stripe, pas les visites de ta page de vente systeme.io."}],
-      note: err(d.sessions)},
+      stats:[N("Livrées",se ? se.completed : ch && ch.count,"","accès envoyés"), N("En cours",enCours), N("Paiements échoués",ch&&ch.failed), N("Paiements abandonnés",pi&&pi.abandoned)],
+      sections:[{title:"Comment c'est compté", text:"Une livraison = une session de paiement terminée. L'accès à la formation part automatiquement par email (systeme.io)."}]},
+    funnel:{eyebrow:"Tunnel de vente", name:"Porte systeme.io", range:true, status: sio ? "ok" : "wait",
+      stats: sio ? [N("Contacts",sio.contacts), N("Nouveaux (30 j)",sio.newContacts), N("Clients (tag CLIENT)",sio.clients,"",`+${sio.newClients} en 30 j`), sio.courses !== null ? N("Formations",sio.courses) : T("Formations","1","Cockpit TIA")]
+                 : [T("Contacts","Non lu"), T("Clients","Non lu"), T("Tunnel","6 étapes",COCKPIT), T("Automatisations","1 règle active",COCKPIT)],
+      sections:[{title:"Connexion", text: sio ? "systeme.io en direct, lecture seule." : `systeme.io : ${sioErr || "non lu"}.`}],
+      alerts: sio ? [] : ["La clé systeme.io est refusée : remplace-la dans les secrets de l'environnement."]},
+    home:{eyebrow:"Budget perso", name:"Ta maison", range:false, status: bu ? (budgetAlerts.length ? "wait" : "ok") : "wait",
+      stats: bu ? [N("Compte courant",bu.compteCourant,"€"), N("Épargne",bu.epargne,"€"), N("Salaire",bu.salaire,"€",`le ${bu.jourDePaie} du mois`), N("Prochaine paie",bu.daysToPay,"j",dLong(bu.nextPay))]
+                : [T("Budget","Non lu")],
+      sections: bu ? [
+        {title:"Charges mensuelles", items: [...Object.entries(bu.charges).map(([k,v]) => `${k} : ${eur(v)}`), ...bu.missing.map(k => `${k} : à renseigner`)]},
+        {title:"Reste à vivre", text: bu.resteAVivre === null ? "Calculé dès que toutes les charges sont renseignées." : `${eur(bu.resteAVivre)} par mois (salaire − charges).`},
+        ...(projRows ? [{title:"Projection jusqu'à août", table: projRows}] : [])
+      ] : [{title:"Erreur", text: err(d.budget) || "Non lu"}],
+      alerts: budgetAlerts, note: bu ? `Source : ${bu.source}.` : ""},
+    safe:{eyebrow:"Épargne", name:"Le coffre", range:false, status: bu ? "ok" : "wait",
+      stats: bu ? [N("Épargne",bu.epargne,"€"), N("Mois de salaire",bu.epargne/bu.salaire,"","épargne ÷ salaire"),
+        bu.chargesTotal ? N("Mois de charges couverts",bu.epargne/bu.chargesTotal) : T("Mois de charges couverts","—","charges à renseigner"),
+        N("Total compte + épargne",bu.compteCourant + bu.epargne,"€")] : [T("Épargne","Non lu")],
+      sections:[{title:"Réserve de sécurité", text: bu && bu.chargesTotal ? `Ton épargne couvre ${nf(bu.epargne/bu.chargesTotal,1)} mois de charges.` : "Pour savoir combien de mois ton épargne te protège, renseigne tes charges."}],
+      note: bu ? `Source : ${bu.source}.` : ""},
+    shop:{eyebrow:"Terrasse", name:"Pages de paiement", range:true, status: se ? "ok" : "wait",
+      stats:[N("Ouvertes",se&&se.created), N("Terminées",se&&se.completed), N("Conversion",se && se.created ? Math.round(se.completed/se.created*100) : 0,"%"), N("Expirées",se&&se.expired)],
+      sections:[{title:"À savoir", text:"Compte les pages de paiement Stripe Checkout. Le bon de commande systeme.io encaisse aussi via Stripe."}]},
     studio:{eyebrow:"Contenu", name:"Studio vidéo", range:false, status:"off",
-      stats:[N("Docs scripts et prompts",3), T("Dernier modifié","11 nov."), N("Vidéos analysées",0), T("Vues mesurées","Non accessibles")],
-      sections:[{title:"Source", text:"Google Drive : « TIA - Scripts… », « TIA - Prompts offerts », « prompt video »."}], note:SNAP},
+      stats:[N("Docs scripts et prompts",3), N("Vidéos écrites",52,"","script + description"), T("Plan de publication","Prêt","12 nov."), T("Vues mesurées","Non accessibles")],
+      sections:[{title:"Source", text:"Google Drive : « TIA - Scripts et descriptions des vidéos (52…) », « TIA - Plan de publication », « TIA - Calendrier de publication (v2) »."}], note:SNAP},
     tiktok:{eyebrow:"Audience", name:"Antenne TikTok", range:false, status:"off",
       stats:[N("Comptes publicitaires",0), N("Business Centers",0), N("Dépense pub",0,"€"), T("Vues organiques","Non accessibles")],
       alerts:["Aucun compte publicitaire TikTok relié."], note:SNAP},
-    funnel:{eyebrow:"Tunnel", name:"Porte systeme.io", range:false, status:"off",
-      stats:[T("Entrées","Non lu"), N("Docs de configuration",1), T("Connexion","Aucune"), T("Source","Drive")],
-      sections:[{title:"Pour l'ajouter", text:"Exporte les statistiques du tunnel en CSV et envoie-les moi."}], note:SNAP},
     mail:{eyebrow:"Courrier", name:"Boîte mail", range:false, status:"off",
-      stats:[N("Emails de commande",0), N("Emails Stripe récents",2), T("Fournisseurs","DSers, CJ, AliExpress"), N("Période lue",30,"j")],
-      note:SNAP}
+      stats:[N("Emails de commande",0), N("Emails Stripe récents",2), T("Campagnes","Bloquées","domaine à authentifier"), N("Période lue",30,"j")],
+      note:`${SNAP} Campagnes : ${COCKPIT}.`}
   };
-  return it;
 }
-const ORDER = ["overview","tower","shelves","counter","clients","trucks","shop","studio","tiktok","funnel","mail"];
+const ORDER = ["overview","tower","shelves","counter","clients","trucks","funnel","home","safe","shop","studio","tiktok","mail"];
 
 /* ---------- Comptage animé ---------- */
 const shown = new WeakMap(); let raf = 0;
 function countUp(targets){
   cancelAnimationFrame(raf);
-  const dec = t => (t.to % 1 ? 2 : 0);
+  const dec = t => (t.to % 1 ? (Math.abs(t.to) < 10 ? 1 : 2) : 0);
   if (reduce){ targets.forEach(t => { t.el.textContent = nf(t.to, dec(t)); shown.set(t.el, t.to); }); return; }
   targets.forEach(t => t.from = shown.get(t.el) ?? 0);
   const t0 = performance.now();
@@ -265,34 +285,29 @@ function countUp(targets){
   };
   raf = requestAnimationFrame(tick);
 }
-
-/* ---------- Courbe du CA par jour ---------- */
 function sparkline(days){
   const W = 300, H = 64, max = Math.max(1, ...days.map(d => d.amount));
   const pts = days.map((d, i) => [i/(days.length-1)*W, H - 6 - d.amount/max*(H-14)]);
   const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
   const last = pts[pts.length-1];
   return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Chiffre d'affaires par jour">
-    <line x1="0" y1="${H-6}" x2="${W}" y2="${H-6}" stroke="#E6DFD2" stroke-width="1"/>
+    <line x1="0" y1="${H-6}" x2="${W}" y2="${H-6}" stroke="#E6DFD2"/>
     <path d="${line} L ${W} ${H-6} L 0 ${H-6} Z" fill="#D97757" fill-opacity=".14"/>
     <path d="${line}" fill="none" stroke="#D97757" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
     <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="#B9583A"/></svg>
     <div class="spark-axis"><span>${dShort(days[0].date)}</span><span>max ${money(Math.max(0,...days.map(d=>d.amount)))}</span><span>${dShort(days[days.length-1].date)}</span></div>`;
 }
-
-/* ---------- Carte ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function rangeText(){
   if (!DATA) return "";
-  const a = new Date(DATA.periodStart), b = new Date(DATA.fetchedAt);
-  const f = x => x.toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"short"});
-  return `${f(a)} → ${f(b)} · 30 jours`;
+  const f = x => new Date(x).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"short"});
+  return `${f(DATA.periodStart)} → ${f(DATA.fetchedAt)} · 30 jours`;
 }
 function openCard(id, keep){
-  const it = ITEMS[id]; if (!it) return; selected = id;
+  const it = ITEMS[id]; if (!it || !it.name) return; selected = id;
   $("c-eye").textContent = it.eyebrow;
   $("c-title").textContent = it.name;
-  $("c-range").textContent = it.range ? rangeText() : (it.note === SNAP ? "Relevé du 12 nov. 2026" : "En direct depuis Stripe");
+  $("c-range").textContent = it.range ? rangeText() : (it.note === SNAP ? "Relevé du 12 nov. 2026" : "Mis à jour en direct");
   const dl = $("c-stats"), prev = keep ? [...dl.querySelectorAll("dd > span")] : [];
   dl.innerHTML = ""; const targets = [];
   it.stats.forEach(s => {
@@ -312,9 +327,14 @@ function openCard(id, keep){
     dl.appendChild(box);
   });
   let h = "";
-  if (it.spark && DATA && DATA.charges.ok) h += `<div class="sec"><h3>Chiffre d'affaires par jour</h3>${sparkline(DATA.charges.days)}${it.lines ? `<ul class="lines">${it.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}</div>`;
+  if (it.spark && DATA && DATA.charges.ok) h += `<div class="sec"><h3>Chiffre d'affaires par jour</h3>${sparkline(DATA.charges.days)}<ul class="lines">${it.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul></div>`;
   (it.sections || []).forEach(s => {
-    h += `<div class="sec"><h3>${esc(s.title)}</h3>` + (s.items ? `<ul class="lines">${s.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="txtsec">${esc(s.text)}</p>`) + `</div>`;
+    let body;
+    if (s.table) body = `<div class="tblwrap"><table class="tbl"><tr><th>Mois</th><th>Reste</th><th>Épargne utilisée</th><th>Compte</th><th>Épargne</th></tr>${
+      s.table.map(r => `<tr class="${r.epargneUtilisee > 0 ? "risk" : ""}"><td>${esc(r.mois)}</td><td>${nf(r.reste)}</td><td>${nf(r.epargneUtilisee)}</td><td>${nf(r.compte)}</td><td>${nf(r.epargne)}</td></tr>`).join("")}</table></div>`;
+    else if (s.items) body = `<ul class="lines">${s.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    else body = `<p class="txtsec">${esc(s.text)}</p>`;
+    h += `<div class="sec"><h3>${esc(s.title)}</h3>${body}</div>`;
   });
   if (it.alerts && it.alerts.length) h += `<div class="sec alertbox"><h3>⚠ À traiter</h3><ul>${it.alerts.map(a => `<li>${esc(a)}</li>`).join("")}</ul></div>`;
   if (it.note) h += `<p class="c-range" style="margin:12px 0 0">${esc(it.note)}</p>`;
@@ -329,19 +349,19 @@ $("close").onclick = closeCard;
 addEventListener("keydown", e => { if (e.key === "Escape") closeCard(); });
 $("pickEl").onchange = e => e.target.value ? openCard(e.target.value) : closeCard();
 
-/* ---------- Résumé + rafraîchissement ---------- */
 let summaryShown = false;
 function renderSummary(d){
-  const ch = d.charges.ok ? d.charges : null;
+  const ch = d.charges.ok ? d.charges : null, bu = d.budget.ok ? d.budget : null;
   const alerts = ORDER.reduce((n, id) => n + ((ITEMS[id].alerts || []).length), 0);
   $("s-range").textContent = rangeText();
   const set = (id, v, unit) => { const el = $(id); if (v === null){ el.textContent = "—"; return null; }
     el.innerHTML = `<span></span>${unit ? " " + unit : ""}`; const s = el.firstChild; shown.set(s, summaryShown ? (+el.dataset.v || 0) : 0); el.dataset.v = v; return {el:s, to:v}; };
   const t = [set("k-ca", ch ? ch.gross : null, CUR), set("k-cl", ch ? ch.customers : null), set("k-avg", ch && ch.avg !== null ? ch.avg : null, CUR)].filter(Boolean);
   $("k-al").textContent = `⚠ ${alerts}`;
+  $("s-perso").innerHTML = bu ? `<span>Perso · compte <b>${esc(eur(bu.compteCourant))}</b></span><span>épargne <b>${esc(eur(bu.epargne))}</b></span><span>paie dans <b>${bu.daysToPay} j</b></span>` : "";
   const at = new Date(d.fetchedAt).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
-  const bad = ["account","charges","intents","sessions","products","balance"].filter(k => !d[k].ok);
-  $("s-live").innerHTML = bad.length ? `Stripe mis à jour à ${at} · sections non lues : ${bad.join(", ")}` : `<b>●</b> Stripe en direct · mis à jour à ${at} · toutes les ${d.refreshSeconds} s`;
+  const src = [["Stripe", ["account","charges","intents","sessions","products","balance"].every(k => d[k].ok)], ["systeme.io", d.systeme.ok]];
+  $("s-live").innerHTML = src.map(([n, ok]) => `<b style="color:${ok ? "var(--ok)" : "var(--alert)"}">●</b> ${n} ${ok ? "en direct" : "non lu"}`).join(" · ") + ` · mis à jour à ${at}`;
   if (!selected) countUp(t); else t.forEach(x => x.el.textContent = nf(x.to, x.to % 1 ? 2 : 0));
   summaryShown = true;
 }
@@ -354,242 +374,332 @@ async function refresh(){
     if ($("pickEl").options.length === 1) ORDER.forEach(id => { const o = document.createElement("option"); o.value = id; o.textContent = ITEMS[id].name; $("pickEl").appendChild(o); });
     renderSummary(DATA); updateWorld(DATA);
     if (selected) openCard(selected, true);
-  } catch (e) {
-    $("err").hidden = false; $("err").textContent = `Serveur injoignable (${e.message}). Nouvel essai dans une minute.`;
-  }
+  } catch (e) { $("err").hidden = false; $("err").textContent = `Serveur injoignable (${e.message}). Nouvel essai dans une minute.`; }
 }
 
 /* =====================================================================
-   MONDE 3D
+   MONDE 3D — matériaux physiques, tone mapping filmique, ombres douces
    ===================================================================== */
 const canvas = $("gl");
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .82;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-const hemi = new THREE.HemisphereLight(0xfff6ec, 0x8f8270, .5); scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xfff0e0, .85);
-sun.position.set(18, 30, 12); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, {left:-26, right:26, top:26, bottom:-26, near:1, far:90}); sun.shadow.bias = -.0005;
+const hemi = new THREE.HemisphereLight(0xFFF3E4, 0xB49F86, 1.15); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xFFE9D2, 2.6);
+sun.position.set(-22, 38, 26); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, {left:-34, right:34, top:34, bottom:-34, near:1, far:120}); sun.shadow.bias = -.0004; sun.shadow.normalBias = .02;
 scene.add(sun);
+const fill = new THREE.DirectionalLight(0xCFE0FF, .35); fill.position.set(25, 18, -20); scene.add(fill);
 
-const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 400);
-const HOME = {pos:new THREE.Vector3(30, 28, 30), target:new THREE.Vector3(0, 1, 0), zoom:1.15};
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 500);
+const HOME = {pos:new THREE.Vector3(34, 32, 34), target:new THREE.Vector3(0, 1, 2), zoom:1.25};
 cam.position.copy(HOME.pos); cam.zoom = HOME.zoom;
 const controls = new THREE.OrbitControls(cam, canvas);
 Object.assign(controls, {enableDamping:true, dampingFactor:.08, rotateSpeed:.55, zoomSpeed:.9, panSpeed:.8, screenSpacePanning:true,
-  minZoom:.6, maxZoom:4, minPolarAngle:.45, maxPolarAngle:1.15});
+  minZoom:.55, maxZoom:4.5, minPolarAngle:.45, maxPolarAngle:1.15});
 controls.target.copy(HOME.target);
 
-const COL = {cream:0xF2EADB, cream2:0xEADFCB, roof:0xD97757, roof2:0xC65F3F, roof3:0xE08E6B, shutter:0x8EA3AE, ink:0x3B3631,
-  street:0x8E867B, walk:0xCFC4B1, grass:0xA9B585, curb:0xCBC1AF, wood:0x9A7352, leaf:0x8FA56E, leaf2:0xA4B77F, pot:0xC8714C,
-  win:0x5A5C5E, glow:0xFFC58F, white:0xFFFBF4, water:0x9CC3C0, orange:0xD97757};
-const pick = [], groups = {}, glowMats = {}, markers = {};
-const mat = (c, o) => new THREE.MeshLambertMaterial(Object.assign({color:c, flatShading:true}, o||{}));
-function add(p, geo, c, x, y, z, o){ const m = new THREE.Mesh(geo, mat(c, o)); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; p.add(m); return m; }
+/* --- Matériaux partagés (couleurs sRGB converties en linéaire) --- */
+const lin = h => new THREE.Color(h).convertSRGBToLinear();
+const MC = new Map();
+function M(hex, o){ const k = hex + JSON.stringify(o || {}); if (!MC.has(k)) MC.set(k, new THREE.MeshStandardMaterial(Object.assign({color:lin(hex), roughness:.88, metalness:0, flatShading:true}, o||{}))); return MC.get(k); }
+function tex(draw, w, h, rep){ const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; if (rep){ t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...rep); } return t; }
+const TILE = tex((x, w, h) => { x.fillStyle = "#C9623F"; x.fillRect(0,0,w,h);
+  for (let r = 0; r < 8; r++){ x.fillStyle = r % 2 ? "#D16B45" : "#C25C3A"; x.fillRect(0, r*h/8, w, h/8 - 3); x.fillStyle = "rgba(80,30,15,.35)"; x.fillRect(0, (r+1)*h/8 - 3, w, 3);
+    for (let k = 0; k < 6; k++){ x.fillStyle = "rgba(70,25,10,.18)"; x.fillRect(((k + (r%2)*.5) * w/6) | 0, r*h/8, 2, h/8 - 3); } } }, 256, 256);
+const PLASTER = c => tex((x, w, h) => { x.fillStyle = c; x.fillRect(0,0,w,h);
+  for (let i = 0; i < 900; i++){ x.fillStyle = `rgba(${Math.random()<.5?"120,95,70":"255,250,240"},${Math.random()*.05})`; x.fillRect(Math.random()*w, Math.random()*h, 3, 3); } }, 128, 128, [2, 2]);
+const ASPHALT = tex((x, w, h) => { x.fillStyle = "#8B847C"; x.fillRect(0,0,w,h);
+  for (let i = 0; i < 2500; i++){ const g = 110 + Math.random()*40 | 0; x.fillStyle = `rgba(${g},${g-6},${g-12},.35)`; x.fillRect(Math.random()*w, Math.random()*h, 2, 2); } }, 256, 256, [10, 10]);
+const PAVE = tex((x, w, h) => { x.fillStyle = "#CDBEA4"; x.fillRect(0,0,w,h); x.strokeStyle = "rgba(140,120,95,.35)"; x.lineWidth = 2;
+  for (let i = 0; i <= 8; i++){ x.beginPath(); x.moveTo(0, i*h/8); x.lineTo(w, i*h/8); x.stroke(); x.beginPath(); x.moveTo(i*w/8, 0); x.lineTo(i*w/8, h); x.stroke(); } }, 256, 256, [14, 14]);
+const WOOD = tex((x, w, h) => { for (let i = 0; i < 16; i++){ x.fillStyle = i % 2 ? "#B98A62" : "#AE7E57"; x.fillRect(0, i*h/16, w, h/16); x.fillStyle = "rgba(60,35,20,.25)"; x.fillRect(0, (i+1)*h/16 - 1, w, 1); } }, 128, 256, [2, 2]);
+const CHART = tex((x, w, h) => { x.fillStyle = "#14161A"; x.fillRect(0,0,w,h); x.strokeStyle = "rgba(255,255,255,.08)";
+  for (let i = 1; i < 5; i++){ x.beginPath(); x.moveTo(0, i*h/5); x.lineTo(w, i*h/5); x.stroke(); }
+  let y = h*.6; for (let i = 0; i < 26; i++){ const o = y, c = o + (Math.random()-.45)*h*.12; y = c; x.fillStyle = c < o ? "#3FBF7F" : "#E0614A"; x.fillRect(8 + i*9, Math.min(o,c), 6, Math.max(3, Math.abs(c-o))); }
+  x.strokeStyle = "#D97757"; x.lineWidth = 3; x.beginPath(); for (let i = 0; i < 26; i++){ const yy = h*.55 - i*2.5 + Math.sin(i)*8; i ? x.lineTo(11 + i*9, yy) : x.moveTo(11, yy); } x.stroke(); }, 256, 160);
+function signTex(txt, bg, fg, size){ return tex((x, w, h) => { x.fillStyle = bg; x.fillRect(0,0,w,h); x.fillStyle = fg; x.font = `600 ${size||70}px Georgia, serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(txt, w/2, h/2 + 4); }, 512, 128); }
+const SHADOW_BLOB = tex((x, w, h) => { const g = x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); g.addColorStop(0,"rgba(40,25,10,.38)"); g.addColorStop(.6,"rgba(40,25,10,.16)"); g.addColorStop(1,"rgba(40,25,10,0)"); x.fillStyle = g; x.fillRect(0,0,w,h); }, 128, 128);
+const BLOB_MAT = new THREE.MeshBasicMaterial({map:SHADOW_BLOB, transparent:true, depthWrite:false});
+
+const glassMat = new THREE.MeshStandardMaterial({color:lin(0x4B5964), roughness:.25, metalness:.1, emissive:new THREE.Color(0,0,0)});
+const glassWarm = new THREE.MeshStandardMaterial({color:lin(0x4B5964), roughness:.25, metalness:.1, emissive:new THREE.Color(0,0,0)});
+const lampMat = new THREE.MeshStandardMaterial({color:lin(0xFFE2B8), emissive:new THREE.Color(0,0,0), roughness:.4});
+const SHARED = new Set([glassMat, glassWarm, lampMat]);
+const pick = [], groups = {};
+function add(p, geo, m, x, y, z, noShadow){ const o = new THREE.Mesh(geo, typeof m === "number" ? M(m) : m); o.position.set(x, y, z); o.castShadow = !noShadow; o.receiveShadow = true; p.add(o); return o; }
 const B = (w,h,d) => new THREE.BoxGeometry(w,h,d);
-const Cy = (a,b,h,s) => new THREE.CylinderGeometry(a,b,h,s||8);
-function grp(id, x, z, parent){ const g = new THREE.Group(); g.position.set(x, 0, z); (parent||scene).add(g); if (id){ groups[id] = g; glowMats[id] = []; } return g; }
-function reg(id, g){ (g||groups[id]).traverse(o => { if (o.isMesh){ o.userData.id = id; if (!pick.includes(o)) pick.push(o); } }); }
-function glowWin(id, p, w, h, x, y, z, ry){ const m = add(p, B(w, h, .06), COL.win, x, y, z, {emissive:0x000000}); if (ry) m.rotation.y = ry; m.castShadow = false; (glowMats[id] = glowMats[id] || []).push(m.material); return m; }
-function textTex(txt, opt){
-  const c = document.createElement("canvas"); c.width = 512; c.height = 128; const x = c.getContext("2d");
-  x.fillStyle = opt.bg; x.fillRect(0,0,512,128); x.fillStyle = opt.fg; x.font = `600 ${opt.size||64}px Georgia, serif`;
-  x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(txt, 256, 68);
-  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+const Cy = (a,b,h,s) => new THREE.CylinderGeometry(a,b,h,s||10);
+function grp(id, x, z, parent){ const g = new THREE.Group(); g.position.set(x, 0, z); (parent||scene).add(g); if (id) groups[id] = g; return g; }
+function blob(p, w, d, x, z){ const s = new THREE.Mesh(new THREE.PlaneGeometry(w, d), BLOB_MAT); s.rotation.x = -Math.PI/2; s.position.set(x||0, .17, z||0); s.renderOrder = 1; p.add(s); }
+// rend un groupe cliquable : matériaux clonés pour le surligner seul
+function reg(id, g){
+  (g||groups[id]).traverse(o => { if (o.isMesh && o.material !== BLOB_MAT && o.material.isMeshStandardMaterial){
+    if (!o.userData.own && !SHARED.has(o.material) && !houseGlass.includes(o.material)){ o.material = o.material.clone(); o.userData.own = true; }
+    o.userData.id = id; if (!pick.includes(o)) pick.push(o); } });
 }
 
-/* --- Sol : îlots, trottoirs, rues, passages piétons --- */
-const SIZE = 52, ST = [-9, 9], SW = 2.6;
-add(scene, B(SIZE, .4, SIZE), COL.walk, 0, -.2, 0).castShadow = false;
-[ST, ST].forEach((arr, axis) => arr.forEach(p => {
-  const r = add(scene, axis ? B(SIZE, .05, SW) : B(SW, .05, SIZE), COL.street, axis ? 0 : p, .02, axis ? p : 0); r.castShadow = false;
-  for (let i = -SIZE/2 + 1; i < SIZE/2; i += 2.2){
-    if (Math.abs(i - ST[0]) < 2 || Math.abs(i - ST[1]) < 2) continue;
-    add(scene, axis ? B(1, .06, .1) : B(.1, .06, 1), COL.white, axis ? i : p, .05, axis ? p : i).castShadow = false;
-  }
-}));
-// passages piétons autour des carrefours
-ST.forEach(x => ST.forEach(z => {
-  [[x, z + 2.1, 1], [x, z - 2.1, 1], [x + 2.1, z, 0], [x - 2.1, z, 0]].forEach(([cx, cz, horiz]) => {
-    for (let k = -2; k <= 2; k++) add(scene, horiz ? B(.3, .06, 1.1) : B(1.1, .06, .3), COL.white, cx + (horiz ? k*.5 : 0), .05, cz + (horiz ? 0 : k*.5)).castShadow = false;
+/* --- Toit à deux pentes en tuiles --- */
+function gableRoof(p, w, d, h, x, y, z){
+  const o = .35, half = w/2 + o, slope = Math.hypot(half, h), ang = Math.atan2(h, half);
+  const rm = new THREE.MeshStandardMaterial({map:TILE, roughness:.8, flatShading:true});
+  [-1, 1].forEach(s => {
+    const pl = new THREE.Mesh(new THREE.BoxGeometry(slope, .12, d + 2*o), rm);
+    pl.position.set(x + s*half/2, y + h/2, z); pl.rotation.z = -s*ang; pl.castShadow = pl.receiveShadow = true; p.add(pl);
   });
-}));
-// îlots (bordure + herbe là où il n'y a pas de bâtiment)
-function patch(x, z, w, d){ add(scene, B(w, .08, d), COL.grass, x, .04, z).castShadow = false; }
-patch(-4.6, 4.8, 3.2, 2.6); patch(4.6, 4.8, 3.2, 2.6); patch(0, 16.5, 8, 4); patch(-16.5, 16.5, 7, 6);
-const pond = add(scene, B(5.5, .12, 3.4), COL.water, 16.5, .06, 16.5); pond.castShadow = false;
-
-/* --- Décor : arbres en pots, lampadaires, maisons --- */
-function tree(x, z, s, potted){
-  s = s || 1; const g = grp(null, x, z);
-  if (potted) add(g, Cy(.42*s, .32*s, .45*s, 8), COL.pot, 0, .22*s, 0);
-  add(g, Cy(.08*s, .1*s, .9*s, 5), COL.wood, 0, (potted ? .45 : 0) + .45*s, 0);
-  add(g, new THREE.IcosahedronGeometry(.62*s, 0), COL.leaf, 0, (potted ? .45 : 0) + 1.25*s, 0);
-  add(g, new THREE.IcosahedronGeometry(.42*s, 0), COL.leaf2, .2*s, (potted ? .45 : 0) + 1.6*s, .1*s);
+  add(p, B(.24, .24, d + 2*o + .05), 0xA94C2E, x, y + h + .04, z);
+  const tri = new THREE.Shape(); tri.moveTo(-w/2, 0); tri.lineTo(w/2, 0); tri.lineTo(0, h - .05); tri.closePath();
+  const tg = new THREE.ShapeGeometry(tri);
+  [-1, 1].forEach(s => { const m = new THREE.Mesh(tg, M(0xEFE3CF)); m.position.set(x, y, z + s*d/2); if (s < 0) m.rotation.y = Math.PI; m.castShadow = true; p.add(m); });
 }
-const lampMats = [];
-function lamp(x, z){ const g = grp(null, x, z); add(g, Cy(.05, .06, 1.8, 5), COL.ink, 0, .9, 0);
-  const b = add(g, new THREE.SphereGeometry(.16, 8, 6), COL.glow, 0, 1.85, 0, {emissive:0x000000}); lampMats.push(b.material); }
-const houseWins = [];
-function house(x, z, w, d, floors, rot, roofCol){
-  const g = grp(null, x, z); g.rotation.y = rot || 0; const h = floors * 1.35;
-  add(g, B(w, h, d), floors % 2 ? COL.cream : COL.cream2, 0, h/2, 0);
-  const roof = add(g, new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), roofCol || COL.roof, 0, h + .55, 0);
-  roof.rotation.y = Math.PI/4; roof.scale.set(w*1.12, 1.15, d*1.12);
-  const cols = Math.max(2, Math.round(w/1.3));
-  for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++){
-    const wx = -w/2 + (c + .5) * w/cols, wy = .75 + f*1.35;
-    const m = add(g, B(.42, .62, .06), COL.win, wx, wy, d/2 + .03, {emissive:0x000000}); m.castShadow = false; houseWins.push(m.material);
-    add(g, B(.14, .62, .05), COL.shutter, wx - .3, wy, d/2 + .04).castShadow = false;
-    add(g, B(.14, .62, .05), COL.shutter, wx + .3, wy, d/2 + .04).castShadow = false;
-  }
-  add(g, B(.6, 1, .06), COL.wood, w/2 - .6, .5, d/2 + .03);
+
+/* --- Fenêtre : cadre, croisillon, rebord, volets --- */
+function windowAt(p, x, y, z, ry, w, h, shutter, glass){
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry || 0; p.add(g);
+  add(g, B(w + .14, h + .14, .08), 0xF7F1E6, 0, 0, 0, true);
+  add(g, B(w, h, .1), glass || glassMat, 0, 0, .02, true);
+  add(g, B(.05, h, .12), 0xF7F1E6, 0, 0, .03, true);
+  add(g, B(w + .24, .07, .2), 0xE4D6BF, 0, -h/2 - .08, .06, true);
+  if (shutter){ const dark = new THREE.Color(shutter).multiplyScalar(.8).getHex();
+    [-1, 1].forEach(s => { add(g, B(w/2 + .02, h + .06, .06), shutter, s*(w*.75 + .1), 0, .03, true);
+      for (let k = -2; k <= 2; k++) add(g, B(w/2 - .06, .03, .08), dark, s*(w*.75 + .1), k*h/6, .04, true); }); }
   return g;
 }
-// blocs extérieurs : maisons de village
-[[-19,-19,5,4,2,0,COL.roof],[-13.5,-19.5,4,3.5,3,0,COL.roof2],[-19,-13.5,4,4,2,Math.PI/2,COL.roof3],
- [13.5,-19.5,4.4,3.6,2,0,COL.roof3],[19,-19,4,4,3,0,COL.roof],[19,-13.5,4,3.6,2,-Math.PI/2,COL.roof2],
- [-19,13.5,4,3.6,2,Math.PI/2,COL.roof2],[-13.5,19.5,4,3.4,2,Math.PI,COL.roof],
- [13.5,19.5,4.2,3.6,2,Math.PI,COL.roof2],[19.5,12.5,3.6,4,3,-Math.PI/2,COL.roof],
- [-19,4,4,3.6,2,Math.PI/2,COL.roof],[19,-4,4,3.6,2,-Math.PI/2,COL.roof3],[13.5,4.5,3.6,3.2,2,Math.PI,COL.roof],[-5.5,-19.5,3.6,3.4,2,0,COL.roof2],[5.5,-19.5,3.6,3.4,3,0,COL.roof3]
-].forEach(a => house(...a));
-[[-11.2,-6],[-11.2,6],[11.2,-6],[11.2,6],[-6,-11.2],[6,-11.2],[-6,11.2],[6,11.2],[-20,-5],[20,5],[-4,22],[4,22],[-22,0],[22,0]].forEach(([x,z]) => tree(x, z, .9));
-[[-4.6,4.8],[4.6,4.8],[-6,-6],[6,-6]].forEach(([x,z]) => tree(x, z, .75, true));
-[[-6.9,6.9],[6.9,6.9],[-6.9,-6.9],[6.9,-6.9],[-11,11],[11,-11],[11,11],[-11,-11]].forEach(([x,z]) => lamp(x, z));
 
-/* --- Bâtiment central : la boutique Nuvéa, en coupe --- */
-const shop = grp("overview", 0, -.6);
-(function(){
-  const W = 9, D = 6.4, H = 3, low = .75;
-  add(shop, B(W, .2, D), 0xE9DCC6, 0, .1, 0);                                         // sol
-  for (let i = -W/2 + .5; i < W/2; i += 1) for (let j = -D/2 + .5; j < D/2; j += 1)
-    if ((Math.round(i + j) % 2) === 0) add(shop, B(.98, .02, .98), 0xDCCBB0, i, .21, j).castShadow = false; // carrelage
-  add(shop, B(W, H, .3), COL.cream, 0, H/2, -D/2);                                      // mur du fond
-  add(shop, B(.3, H, D), COL.cream2, -W/2, H/2, 0);                                     // mur gauche
-  add(shop, B(W, low, .3), COL.cream, 0, low/2, D/2);                                   // muret avant (coupe)
-  add(shop, B(.3, low, D), COL.cream2, W/2, low/2, 0);                                  // muret droit (coupe)
-  add(shop, B(W + .3, .18, .4), COL.orange, 0, H, -D/2);                                // corniche
-  add(shop, B(.4, .18, D + .3), COL.orange, -W/2, H, 0);
-  for (let i = 0; i < 4; i++) glowWin("overview", shop, 1.2, 1.1, -3.3 + i*2.2, 1.7, -D/2 + .17);
-  // enseigne
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({map:textTex("Nuvéa", {bg:"#D97757", fg:"#FFFBF4", size:72})}));
-  sign.position.set(0, H + .75, -D/2 + .05); shop.add(sign);
-  add(shop, B(4.1, 1.1, .1), COL.roof2, 0, H + .75, -D/2 - .02);
-  // store rayé sur la façade avant
-  for (let i = 0; i < 9; i++){ const s = add(shop, B(1, .08, 1.3), i % 2 ? COL.white : COL.orange, -W/2 + .5 + i, 2.1, D/2 + .6); s.rotation.x = .35; }
-  // porte d'entrée (ouverture dans le muret avant)
-  add(shop, B(1.4, .02, .5), 0x7D6450, 2.6, .22, D/2 + .1).castShadow = false;
-  // table et ordinateur « formation »
-  add(shop, B(1.8, .1, 1), COL.wood, 1.8, .95, -.4); [[-.8,-.4],[.8,-.4],[-.8,.4],[.8,.4]].forEach(([x,z]) => add(shop, B(.08,.85,.08), COL.ink, 1.8+x, .52, -.4+z));
-  add(shop, B(.7, .45, .05), COL.ink, 1.8, 1.25, -.7);
-  glowWin("overview", shop, .62, .38, 1.8, 1.25, -.67);
-  // tabourets
-  [[1.2,.5],[2.4,.5]].forEach(([x,z]) => { add(shop, Cy(.25,.25,.08,8), COL.orange, x, .7, z); add(shop, Cy(.05,.05,.5,5), COL.ink, x, .45, z); });
-})();
-reg("overview", shop);
-// comptoir = caisse Stripe (dans la boutique)
-const counter = grp("counter", -1.4, -2.2, shop);
-(function(){
-  add(counter, B(3.4, 1.05, .9), COL.wood, 0, .62, 0);
-  add(counter, B(3.6, .08, 1.05), COL.white, 0, 1.18, 0);
-  add(counter, B(.7, .35, .55), 0x2E2A26, .9, 1.42, 0);
-  glowWin("counter", counter, .5, .22, .9, 1.48, .29);
-  add(counter, B(.5, .06, .35), 0x635BFF, -.6, 1.25, .1);   // terminal de paiement
-})();
-reg("counter", counter);
-// étagères = packs digitaux
-const shelves = grp("shelves", -4.05, .7, shop);
-(function(){
-  add(shelves, B(.5, 2.4, 3.6), COL.wood, 0, 1.3, 0);
-  const cols = [0xD97757, 0xF2C29B, 0x8EA3AE, 0xC65F3F, 0xE9D3B4, 0x6E8B6A];
-  for (let s = 0; s < 4; s++){
-    add(shelves, B(.6, .06, 3.6), 0x7C5C41, .05, .45 + s*.55, 0);
-    for (let k = 0; k < 7; k++) add(shelves, B(.35, .32 + (k%3)*.05, .34), cols[(s*3 + k) % cols.length], .12, .65 + s*.55, -1.5 + k*.5);
+/* --- Maison de village --- */
+const houseGlass = [];
+function house(x, z, w, d, floors, rot, opt){
+  opt = opt || {}; const g = grp(opt.id || null, x, z); g.rotation.y = rot || 0;
+  const fh = 1.5, h = floors*fh + .3, y0 = .15;
+  const wall = new THREE.MeshStandardMaterial({map:PLASTER(opt.wall || "#F1E6D3"), roughness:.95, flatShading:true});
+  add(g, B(w, h, d), wall, 0, y0 + h/2, 0);
+  add(g, B(w + .06, .35, d + .06), 0xCDBFA8, 0, y0 + .17, 0);
+  add(g, B(w + .12, .14, d + .12), 0xE8DCC7, 0, y0 + h - .07, 0);
+  gableRoof(g, w, d, Math.min(1.6, w*.38), 0, y0 + h, 0);
+  if (!opt.noChimney) add(g, B(.45, 1.1, .45), 0xE2D2BA, w*.25, y0 + h + .9, d*.15);
+  const shutter = opt.shutter || 0x8EA3AE, cols = Math.max(2, Math.round(w/1.35));
+  const gl = new THREE.MeshStandardMaterial({color:lin(0x4B5964), roughness:.25, metalness:.1, emissive:new THREE.Color(0,0,0)}); houseGlass.push(gl);
+  for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++){
+    const wx = -w/2 + (c + .5)*w/cols, wy = y0 + .95 + f*fh;
+    if (f === 0 && opt.shopFront) continue;
+    if (f === 0 && c === cols - 1){
+      add(g, B(.78, 1.35, .1), 0xF7F1E6, wx, y0 + .72, d/2 + .03, true); add(g, B(.62, 1.2, .12), opt.door || 0x6E4E36, wx, y0 + .66, d/2 + .05, true);
+      add(g, B(1, .1, .4), 0xCDBFA8, wx, y0 + .05, d/2 + .2); continue;
+    }
+    windowAt(g, wx, wy, d/2 + .03, 0, .55, .8, shutter, gl);
+    if (f > 0 && opt.balcony && c === 0){ add(g, B(1.3, .08, .45), 0xE8DCC7, wx + .4, wy - .5, d/2 + .25); add(g, B(1.3, .4, .03), 0x3B3631, wx + .4, wy - .28, d/2 + .46, true); }
   }
+  const rows = Math.max(1, Math.round(d/1.8));
+  for (let f = 0; f < floors; f++) for (let r = 0; r < rows; r++) windowAt(g, w/2 + .03, y0 + .95 + f*fh, -d/2 + (r + .5)*d/rows, Math.PI/2, .5, .75, shutter, gl);
+  if (opt.shopFront){ add(g, B(w*.75, 1.15, .1), glassMat, 0, y0 + .85, d/2 + .03, true); add(g, B(w*.75 + .15, .12, .15), 0x3B3631, 0, y0 + 1.48, d/2 + .06, true);
+    for (let i = 0; i < 6; i++){ const s = add(g, B(w*.75/6, .08, .9), i % 2 ? 0xFFF8EE : (opt.awning || 0x5E7F6A), -w*.375 + (i+.5)*w*.75/6, y0 + 1.8, d/2 + .42); s.rotation.x = .38; } }
+  blob(g, w + 1.6, d + 1.6);
+  return g;
+}
+
+/* --- Végétation, mobilier urbain --- */
+function tree(x, z, s, potted, parent){
+  s = s || 1; const g = grp(null, x, z, parent), base = .15 + (potted ? .55*s : 0);
+  if (potted){ add(g, Cy(.5*s, .38*s, .55*s, 10), 0xC8714C, 0, .15 + .27*s, 0); add(g, Cy(.45*s, .45*s, .04, 10), 0x6B5440, 0, .15 + .55*s, 0); }
+  add(g, Cy(.09*s, .13*s, 1.1*s, 6), 0x8A6648, 0, base + .55*s, 0);
+  const leaf = [0x7F9A5E, 0x8FAA69, 0x9DB476];
+  [[0,1.45,0,.75],[.35,1.25,.2,.55],[-.3,1.3,-.15,.55],[0,1.85,.05,.5]].forEach(([a,b,c,r], i) => {
+    const m = add(g, new THREE.IcosahedronGeometry(r*s, 1), leaf[i % 3], a*s, base + b*s, c*s); m.rotation.set(i, i*2, 0); });
+  blob(g, 1.8*s, 1.8*s);
+}
+function bush(x, z, s){ const g = grp(null, x, z); add(g, new THREE.IcosahedronGeometry(.45*(s||1), 1), 0x86A062, 0, .15 + .35*(s||1), 0); }
+function lamp(x, z){ const g = grp(null, x, z); add(g, Cy(.05, .08, 2.4, 6), 0x2F2C29, 0, 1.35, 0); add(g, B(.5, .06, .06), 0x2F2C29, .2, 2.5, 0);
+  add(g, Cy(.16, .1, .25, 6), 0x2F2C29, .42, 2.43, 0); add(g, new THREE.SphereGeometry(.11, 10, 8), lampMat, .42, 2.29, 0, true); }
+function bench(x, z, ry){ const g = grp(null, x, z); g.rotation.y = ry || 0; add(g, B(1.4, .08, .4), 0x9A7352, 0, .6, 0); add(g, B(1.4, .35, .06), 0x9A7352, 0, .83, -.18);
+  [-.6, .6].forEach(a => add(g, B(.06, .45, .4), 0x2F2C29, a, .37, 0)); }
+function car(x, z, ry, col){ const g = grp(null, x, z); g.position.y = .15; g.rotation.y = ry || 0;
+  add(g, B(2.3, .55, 1.05), col, 0, .5, 0); add(g, B(1.3, .45, .95), col, -.1, .98, 0); add(g, B(1.25, .38, .97), glassMat, -.1, .98, 0, true);
+  [[-.75,.52],[-.75,-.52],[.75,.52],[.75,-.52]].forEach(([a,b]) => { const w = add(g, Cy(.24,.24,.18,12), 0x24211F, a, .25, b); w.rotation.x = Math.PI/2; });
+  add(g, B(.05, .12, .8), 0xFFF2CC, 1.16, .55, 0, true); blob(g, 2.8, 1.6); }
+function bistro(x, z, parent){ const g = grp(null, x, z, parent);
+  add(g, Cy(.38,.38,.05,14), M(0xC9A64E, {metalness:.3, roughness:.4}), 0, .93, 0); add(g, Cy(.04,.04,.75,6), 0x2F2C29, 0, .55, 0);
+  [0, Math.PI*2/3, Math.PI*4/3].forEach(a => { const c = grp(null, Math.cos(a)*.68, Math.sin(a)*.68, g); c.rotation.y = -a - Math.PI/2;
+    add(c, B(.4,.05,.4), 0x7A5A3E, 0, .63, 0); add(c, B(.4,.45,.05), 0x7A5A3E, 0, .87, -.18);
+    [[-.17,-.17],[.17,-.17],[-.17,.17],[.17,.17]].forEach(([a2,b2]) => add(c, B(.04,.48,.04), 0x2F2C29, a2, .39, b2)); }); }
+
+/* --- Sol : pavés, asphalte, bordures, marquages, passages piétons --- */
+const SIZE = 64, ST = [-10, 10], SW = 3.2, groundTop = .15;
+const pave = new THREE.Mesh(B(SIZE, .3, SIZE), new THREE.MeshStandardMaterial({map:PAVE, roughness:.95})); pave.receiveShadow = true; scene.add(pave);
+const asph = new THREE.MeshStandardMaterial({map:ASPHALT, roughness:.95});
+ST.forEach(p => {
+  [[SIZE, SW, 0, p, true], [SW, SIZE, p, 0, false]].forEach(([w, d, x, z, alongX]) => {
+    const r = new THREE.Mesh(B(w, .3, d), asph); r.position.set(x, .01, z); r.receiveShadow = true; scene.add(r);
+    [-1, 1].forEach(s => add(scene, alongX ? B(SIZE, .34, .18) : B(.18, .34, SIZE), 0xC7BBA6, alongX ? 0 : x + s*SW/2, .02, alongX ? z + s*SW/2 : 0, true));
+  });
+  for (let i = -SIZE/2 + 1.5; i < SIZE/2; i += 2.6){
+    if (ST.some(q => Math.abs(i - q) < 3.2)) continue;
+    add(scene, B(1.2, .02, .12), 0xF4EEE2, i, .17, p, true); add(scene, B(.12, .02, 1.2), 0xF4EEE2, p, .17, i, true);
+  }
+});
+ST.forEach(x => ST.forEach(z => {
+  [[0, 2.7, 1], [0, -2.7, 1], [2.7, 0, 0], [-2.7, 0, 0]].forEach(([dx, dz, hz]) => {
+    for (let k = -3; k <= 3; k++) add(scene, hz ? B(.32, .02, 1.6) : B(1.6, .02, .32), 0xF7F2E8, x + dx + (hz ? k*.45 : 0), .17, z + dz + (hz ? 0 : k*.45), true);
+  });
+}));
+function lawn(x, z, w, d){ add(scene, B(w + .2, .1, d + .2), 0xC7BBA6, x, groundTop + .01, z, true); add(scene, B(w, .12, d), 0xA3B27C, x, groundTop + .03, z, true); }
+add(scene, B(6.4, .14, 4.2), 0xCDBFA8, 19, groundTop + .01, 19, true);
+[[-16,-16,5,5],[14.5,15,4,3],[-15,6,4,4],[16,-9,4,4],[-6.5,-6.5,2.6,2.6],[6.5,-6.5,2.6,2.6]].forEach(a => lawn(...a));
+add(scene, B(6, .12, 3.8), new THREE.MeshStandardMaterial({color:lin(0x8DBAB6), roughness:.12, metalness:.1}), 19, groundTop + .04, 19, true);
+
+/* --- Quartier : maisons tout autour --- */
+const WALLS = ["#F1E6D3", "#EBDDC2", "#F3E0CF", "#F6EFE3", "#E9D8BC"], SHUT = [0x8EA3AE, 0x9AAE8E, 0xA8B9C4, 0xB98A6A];
+let hi = 0;
+const H = (x, z, w, d, f, r, o) => { o = Object.assign({wall:WALLS[hi % 5], shutter:SHUT[hi % 4]}, o || {}); hi++; return house(x, z, w, d, f, r, o); };
+H(-22,-22,5.5,4.5,2,0,{balcony:true}); H(-15.5,-23,4.6,4,3,0); H(-23,-15,4.4,4.4,2,Math.PI/2);
+H(15.5,-23,5,4,2,0,{shopFront:true, awning:0xD97757}); H(22,-22,4.6,4.4,3,0,{balcony:true}); H(23,-15,4.4,4,2,-Math.PI/2);
+H(-23,13,4.6,4,2,Math.PI/2); H(-12,23,5,4,3,Math.PI,{balcony:true}); H(15.5,23,4.8,4,2,Math.PI); H(23,14,4.2,4.6,3,-Math.PI/2);
+H(23,-4,4.6,4,2,-Math.PI/2,{shopFront:true}); H(23,4.5,4.2,4,3,-Math.PI/2); H(14.5,-15.5,4,3.6,2,0); H(-6.5,-23,4.4,4,2,0); H(6.5,-23,4.4,4,3,0,{balcony:true});
+H(-4,23,4.4,4,2,Math.PI); H(6,23,4.4,4,3,Math.PI,{shopFront:true, awning:0x6E8B6A});
+
+[[-13.4,-6.5],[-13.4,6.5],[13.4,-6.5],[13.4,6.5],[-6.5,-13.4],[6.5,-13.4],[-6.5,13.4],[6.5,13.4],[-27,-6],[27,6],[-1,28],[10,28],[-28,0],[28,-2],[-28,28],[27,-27]].forEach(([x,z]) => tree(x, z, 1));
+[[-7.4,7.6],[7.4,7.6],[-7.4,-7.4],[7.4,-7.4]].forEach(([x,z]) => tree(x, z, .85, true));
+[[-8.2,-12.6],[-12.6,-8.2],[12.6,8.2],[8.2,12.6],[-12.6,8.4],[12.6,-8.4],[-8.3,8.3],[8.3,-8.3],[8.3,8.3],[-8.3,-8.3]].forEach(([x,z]) => lamp(x, z));
+bench(-4.5, 7.9, Math.PI); bench(4.5, 7.9, Math.PI); bench(17, 15.8, 0);
+car(-13.2, -2, Math.PI/2, 0xE7DCC8); car(13.2, 2.5, -Math.PI/2, 0x6E8B9A); car(-3, 13.3, 0, 0xC65F3F); car(4, -13.3, Math.PI, 0x8C9A7C);
+for (let i = 0; i < 8; i++) bush(-24 + i*.9, -11.6); for (let i = 0; i < 6; i++) bush(11.6 + i*.9, 11.7, .9);
+
+/* --- Bâtiment central : la boutique Nuvéa (Trading IA Academy), en coupe --- */
+const shop = grp("overview", 0, -.8);
+(function(){
+  const W = 10, D = 7.2, Hh = 3.4, low = .85, y0 = groundTop;
+  const floorM = new THREE.MeshStandardMaterial({map:WOOD, roughness:.7});
+  add(shop, B(W, .2, D), floorM, 0, y0 + .1, 0);
+  const wallM = new THREE.MeshStandardMaterial({map:PLASTER("#F3E7D4"), roughness:.95, flatShading:true});
+  add(shop, B(W, Hh, .3), wallM, 0, y0 + Hh/2, -D/2);
+  add(shop, B(.3, Hh, D), wallM, -W/2, y0 + Hh/2, 0);
+  add(shop, B(W, low, .3), wallM, 0, y0 + low/2, D/2); add(shop, B(.3, low, D), wallM, W/2, y0 + low/2, 0);
+  add(shop, B(W + .3, .22, .45), 0xD97757, 0, y0 + Hh, -D/2); add(shop, B(.45, .22, D + .3), 0xD97757, -W/2, y0 + Hh, 0);
+  add(shop, B(W + .3, .12, .4), 0xE8DCC7, 0, y0 + low + .02, D/2); add(shop, B(.4, .12, D + .3), 0xE8DCC7, W/2, y0 + low + .02, 0);
+  for (let i = 0; i < 4; i++) windowAt(shop, -3.6 + i*2.4, y0 + 2, -D/2 + .17, 0, 1.2, 1.3, null, glassWarm);
+  for (let i = 0; i < 2; i++) windowAt(shop, -W/2 + .17, y0 + 2, -1.5 + i*3, Math.PI/2, 1.1, 1.3, null, glassWarm);
+  add(shop, B(4.6, 1.3, .14), 0xA94C2E, 0, y0 + Hh + .85, -D/2 - .06);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.1), new THREE.MeshBasicMaterial({map:signTex("Nuvéa", "#D97757", "#FFFBF4", 76)}));
+  sign.position.set(0, y0 + Hh + .85, -D/2 + .02); shop.add(sign);
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .55), new THREE.MeshBasicMaterial({map:signTex("Trading IA Academy", "#FFFBF4", "#B9583A", 50)}));
+  poster.position.set(-W/2 + .17, y0 + 3, 2.2); poster.rotation.y = Math.PI/2; shop.add(poster);
+  for (let i = 0; i < 10; i++){ const s = add(shop, B(1, .08, 1.5), i % 2 ? 0xFFF8EE : 0xD97757, -W/2 + .5 + i, y0 + 2.45, D/2 + .7); s.rotation.x = .4; }
+  [-W/2 + .2, W/2 - .2].forEach(xx => add(shop, Cy(.05,.05,2.3,6), 0x2F2C29, xx, y0 + 1.2, D/2 + 1.3));
+  // bureau de formation : deux écrans avec un graphique de trading
+  add(shop, B(3, .1, 1.1), floorM, 1.9, y0 + 1.05, -.2); [[-1.4,-.45],[1.4,-.45],[-1.4,.45],[1.4,.45]].forEach(([a,b]) => add(shop, B(.07,.95,.07), 0x2F2C29, 1.9+a, y0 + .55, -.2+b));
+  const scr = new THREE.MeshBasicMaterial({map:CHART});
+  [1.2, 2.6].forEach(xx => { add(shop, B(1.05, .65, .06), 0x1E1F23, xx, y0 + 1.55, -.55); const s = new THREE.Mesh(new THREE.PlaneGeometry(.95, .56), scr); s.position.set(xx, y0 + 1.55, -.515); shop.add(s); add(shop, B(.08, .3, .08), 0x1E1F23, xx, y0 + 1.2, -.58); });
+  [[1.3,.75],[2.5,.75]].forEach(([a,b]) => { add(shop, Cy(.28,.28,.08,12), 0xD97757, a, y0 + .65, b); add(shop, Cy(.05,.05,.5,6), 0x2F2C29, a, y0 + .38, b); });
+  tree(4.2, -2.6, .55, true, shop);
+  add(shop, B(2.2, .5, .9), 0xB7C2B0, 2.6, y0 + .45, 2.4); add(shop, B(2.2, .6, .25), 0xA8B4A1, 2.6, y0 + .85, 2.82);
+  blob(shop, W + 2, D + 2);
 })();
-reg("shelves", shelves);
+const counter = grp("counter", -1.6, -2.4, shop);
+(function(){ const y0 = groundTop;
+  add(counter, B(3.6, 1.1, 1), 0x8C6448, 0, y0 + .65, 0); add(counter, B(3.8, .08, 1.15), 0xF7F1E6, 0, y0 + 1.24, 0);
+  add(counter, B(.75, .4, .55), 0x2E2A26, .95, y0 + 1.48, 0);
+  add(counter, B(.55, .07, .38), 0x635BFF, -.7, y0 + 1.3, .12);
+  add(counter, B(.9, .5, .05), 0x1E1F23, -1.3, y0 + 1.55, -.3); })();
+const shelves = grp("shelves", -4.5, .8, shop);
+(function(){ const y0 = groundTop;
+  add(shelves, B(.55, 2.6, 4), 0x8C6448, 0, y0 + 1.4, 0);
+  const cols = [0xD97757, 0xF2C29B, 0x8EA3AE, 0xC65F3F, 0xE9D3B4, 0x6E8B6A, 0xF7F1E6];
+  for (let s = 0; s < 4; s++){ add(shelves, B(.65, .06, 4), 0x6E4E36, .05, y0 + .45 + s*.6, 0);
+    for (let k = 0; k < 9; k++) add(shelves, B(.38, .3 + (k % 3)*.06, .3), cols[(s*4 + k) % cols.length], .14, y0 + .64 + s*.6 + (k % 3)*.03, -1.7 + k*.42); } })();
+reg("counter", counter); reg("shelves", shelves);
+reg("overview", shop);
+// le comptoir et les étagères gardent leur propre identité (enregistrés avant)
+counter.traverse(o => { if (o.isMesh) o.userData.id = "counter"; }); shelves.traverse(o => { if (o.isMesh) o.userData.id = "shelves"; });
+
+// terrasse devant la boutique : pages de paiement
+const terrace = grp("shop", -1.5, 6.4);
+add(terrace, B(7, .06, 2.6), 0xE4D6BF, 0, groundTop + .03, 0, true);
+bistro(-2.4, 0, terrace); bistro(0, .1, terrace); bistro(2.4, 0, terrace);
+reg("shop", terrace);
 
 /* --- Tour Formation Trading IA (ta photo) --- */
-const tower = grp("tower", 0, -16);
+const tower = grp("tower", 0, -19);
 (function(){
-  const tiers = [[4.4,3,COL.cream],[3.6,3,COL.cream2],[2.9,2.8,COL.cream],[2.2,2.6,COL.cream2],[1.5,2.4,COL.cream]];
-  let y = 0;
-  tiers.forEach(([w, h, c]) => {
-    add(tower, B(w, h, w), c, 0, y + h/2, 0);
-    add(tower, B(w + .2, .16, w + .2), COL.orange, 0, y + h, 0);
-    for (let k = 0; k < 3; k++){ const o = (k - 1) * w/3.1;
-      glowWin("tower", tower, w/4.6, h*.48, o, y + h*.5, w/2 + .04);
-      glowWin("tower", tower, w/4.6, h*.48, w/2 + .04, y + h*.5, o, Math.PI/2); }
+  const tiers = [[5,3.4],[4.1,3.4],[3.3,3.2],[2.5,3],[1.7,2.8]]; let y = groundTop;
+  const tw = new THREE.MeshStandardMaterial({map:PLASTER("#F4ECDF"), roughness:.6, flatShading:true});
+  tiers.forEach(([w, h]) => {
+    add(tower, B(w, h, w), tw, 0, y + h/2, 0);
+    add(tower, B(w + .25, .2, w + .25), 0xD97757, 0, y + h, 0);
+    const n = Math.max(2, Math.round(w/1.2));
+    for (let k = 0; k < n; k++){ const o = -w/2 + (k + .5)*w/n;
+      for (let r = 0; r < 2; r++){ windowAt(tower, o, y + .9 + r*1.3, w/2 + .03, 0, .5, .9, null, glassWarm); windowAt(tower, w/2 + .03, y + .9 + r*1.3, -o, Math.PI/2, .5, .9, null, glassWarm); } }
     y += h;
   });
-  add(tower, Cy(.05, .25, 3.4, 6), COL.roof2, 0, y + 1.7, 0);
+  add(tower, Cy(.06, .3, 4, 8), 0xB9583A, 0, y + 2, 0);
+  blob(tower, 8, 8);
 })();
 reg("tower");
 
 /* --- Studio vidéo + antenne TikTok --- */
-const studio = grp("studio", -16, -3);
-(function(){
-  add(studio, B(5, 2.6, 4), 0xE3D6C1, 0, 1.3, 0);
-  add(studio, B(5.3, .25, 4.3), COL.ink, 0, 2.72, 0);
-  glowWin("studio", studio, 2.6, 1.1, 0, 1.4, 2.03);
-  add(studio, B(1.4, .5, .1), COL.orange, -1.6, 2.3, 2.05);
-})();
+H(-20, -3, 6, 5, 2, Math.PI/2, {id:"studio", wall:"#E6D8C2", noChimney:true, shopFront:true, awning:0x3B3631});
 reg("studio");
-const tiktok = grp("tiktok", -17.2, -3.8);
-(function(){
-  add(tiktok, Cy(.08, .14, 3.4, 5), COL.ink, 0, 4.5, 0);
-  add(tiktok, B(1.9, 1.1, .14), 0x16171B, 0, 6.3, 0);
-  add(tiktok, B(.26, .76, .16), 0x25F4EE, -.32, 6.3, .06);
-  add(tiktok, B(.26, .76, .16), 0xFE2C55, .32, 6.3, .06);
-})();
+const tiktok = grp("tiktok", -21.2, -5);
+(function(){ add(tiktok, Cy(.08, .16, 3.4, 6), 0x2F2C29, 0, 6.9, 0); add(tiktok, B(2.2, 1.3, .16), 0x16171B, 0, 8.9, 0);
+  add(tiktok, B(.3, .9, .18), 0x25F4EE, -.36, 8.9, .06); add(tiktok, B(.3, .9, .18), 0xFE2C55, .36, 8.9, .06); })();
 reg("tiktok");
 
 /* --- Porte systeme.io au-dessus de la rue --- */
-const funnel = grp("funnel", 9, 4.4);
-(function(){
-  [-1.7, 1.7].forEach(x => add(funnel, B(.35, 3.6, .35), COL.ink, x, 1.8, 0));
-  add(funnel, B(3.9, .7, .4), COL.orange, 0, 3.8, 0);
-  const t = new THREE.Mesh(new THREE.PlaneGeometry(3.4, .6), new THREE.MeshBasicMaterial({map:textTex("systeme.io", {bg:"#D97757", fg:"#FFFBF4", size:60})}));
-  t.position.set(0, 3.8, .21); funnel.add(t);
-})();
+const funnel = grp("funnel", 10, 5);
+(function(){ [-2.1, 2.1].forEach(x => { add(funnel, B(.4, 4.2, .4), 0x2F2C29, x, 2.3, 0); add(funnel, B(.6, .3, .6), 0x2F2C29, x, .3, 0); });
+  add(funnel, B(4.8, .85, .45), 0xD97757, 0, 4.5, 0);
+  const t = new THREE.Mesh(new THREE.PlaneGeometry(4.2, .7), new THREE.MeshBasicMaterial({map:signTex("systeme.io", "#D97757", "#FFFBF4", 64)}));
+  t.position.set(0, 4.5, .24); funnel.add(t); })();
 reg("funnel");
 
-/* --- Boîte aux lettres --- */
-const mail = grp("mail", 6.2, 4.2);
-(function(){ add(mail, Cy(.06,.06,1.2,5), COL.ink, 0, .6, 0); add(mail, B(.9,.65,.6), COL.orange, 0, 1.45, 0); add(mail, B(.08,.45,.05), COL.white, .48, 1.65, 0); })();
-reg("mail");
+/* --- Ta maison (budget perso) + coffre (épargne) --- */
+H(-20, 20, 5.2, 4.4, 2, 0, {id:"home", wall:"#F6EFE3", shutter:0x9AAE8E, balcony:true, door:0xD97757});
+reg("home");
+const homeSign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .5), new THREE.MeshBasicMaterial({map:signTex("Ma maison", "#FFFBF4", "#3B3631", 64)}));
+homeSign.position.set(-20, 3.75, 22.24); scene.add(homeSign);
+lawn(-15, 20, 4, 4.6); for (let i = 0; i < 4; i++) bush(-16.5 + i*1, 17.9, .75);
+const safe = grp("safe", -15, 20.3);
+(function(){ const y0 = groundTop + .1;
+  const steel = M(0x55606A, {metalness:.6, roughness:.35}), gold = M(0xD9B45A, {metalness:.8, roughness:.25});
+  add(safe, B(1.5, 1.5, 1.3), steel, 0, y0 + .75, 0);
+  add(safe, B(1.2, 1.2, .06), M(0x6C7883, {metalness:.6, roughness:.3}), 0, y0 + .75, .68);
+  const k = add(safe, Cy(.22, .22, .08, 16), gold, .2, y0 + .8, .73); k.rotation.x = Math.PI/2;
+  add(safe, B(.08, .4, .08), gold, -.3, y0 + .8, .73);
+  for (let i = 0; i < 5; i++) add(safe, Cy(.22, .22, .08, 14), gold, .98, y0 + .04 + i*.09, .4);
+  blob(safe, 2.4, 2.2); })();
+reg("safe");
 
-/* --- Vitrine (pages de paiement) : présentoir devant la boutique --- */
-const vitrine = grp("shop", -2.6, 4.6);
-(function(){
-  add(vitrine, B(2.2, .9, .8), COL.white, 0, .45, 0);
-  add(vitrine, B(2, .7, .7), 0xCFE2E0, 0, 1.25, 0, {transparent:true, opacity:.55});
-  [-.6, 0, .6].forEach((x, i) => add(vitrine, B(.4, .25, .3), [COL.orange, 0xF2C29B, COL.roof2][i], x, 1.05, 0));
-})();
-reg("shop");
+/* --- Boîte aux lettres --- */
+const mail = grp("mail", 7.3, 4.5);
+(function(){ add(mail, Cy(.06,.06,1.3,6), 0x2F2C29, 0, .8, 0); add(mail, B(.95,.7,.65), 0xD97757, 0, 1.7, 0); add(mail, B(.6,.08,.05), 0x2F2C29, 0, 1.8, .34); })();
+reg("mail");
 
 /* --- Camionnettes --- */
 const trucks = [], truckG = grp("trucks", 0, 0);
 for (let i = 0; i < 2; i++){
   const t = new THREE.Group();
-  add(t, B(2, 1.1, 1.05), COL.white, -.3, .82, 0);
-  add(t, B(2.02, .16, 1.07), COL.orange, -.3, .7, 0);
-  add(t, B(.8, .85, 1), COL.roof2, 1.05, .7, 0);
-  add(t, B(.06, .38, .8), 0x2B2825, 1.46, .86, 0);
-  [[-.9,.5],[-.9,-.5],[.95,.5],[.95,-.5]].forEach(([x,z]) => { const w = add(t, Cy(.22,.22,.16,10), COL.ink, x, .24, z); w.rotation.x = Math.PI/2; });
+  add(t, B(2.4, 1.35, 1.25), 0xFBF6EC, -.35, 1.05, 0); add(t, B(2.42, .22, 1.27), 0xD97757, -.35, .85, 0);
+  add(t, B(1, 1, 1.2), 0xC65F3F, 1.25, .85, 0); add(t, B(.06, .45, 1), glassMat, 1.76, 1.05, 0, true); add(t, B(.7, .4, 1.22), glassMat, 1.2, 1.12, 0, true);
+  [[-1.1,.6],[-1.1,-.6],[1.15,.6],[1.15,-.6]].forEach(([x,z]) => { const w = add(t, Cy(.27,.27,.2,12), 0x24211F, x, .3, z); w.rotation.x = Math.PI/2; });
+  blob(t, 3.6, 2);
   t.userData.offset = i * .5; trucks.push(t); truckG.add(t);
 }
 reg("trucks");
 
-/* --- Clients : un personnage par client, couleur = moment de l'achat --- */
+/* --- Personnages --- */
 const clientG = grp("clients", 0, 0); let people = [];
 const MOMENT_COL = {matin:0x3F7FC1, midi:0xD9583C, soir:0x4E9A62};
-function person(color, ghost){
-  const p = new THREE.Group(), o = ghost ? {transparent:true, opacity:.4} : {};
-  add(p, Cy(.2, .28, .78, 7), ghost ? 0xD8D0C2 : color, 0, .55, 0, o);
-  add(p, new THREE.IcosahedronGeometry(.2, 0), ghost ? 0xE8E0D2 : 0xF0C9A4, 0, 1.13, 0, o);
-  return p;
+const SKIN = [0xF1C9A5, 0xD9A578, 0xB98058, 0x8A5A3C], HAIR = [0x2B2420, 0x5A3D2B, 0xC9A06A, 0x1E1B19];
+function person(color, i){
+  const p = new THREE.Group(), legs = [];
+  [-.11, .11].forEach(x => { const l = new THREE.Group(); l.position.set(x, .7, 0); add(l, B(.15, .7, .16), 0x3B3F4A, 0, -.35, 0); p.add(l); legs.push(l); });
+  add(p, Cy(.2, .24, .72, 8), color, 0, 1.06, 0);
+  [-.27, .27].forEach(x => add(p, B(.1, .55, .12), color, x, 1.08, 0));
+  add(p, new THREE.SphereGeometry(.17, 12, 10), SKIN[i % 4], 0, 1.6, 0);
+  add(p, new THREE.SphereGeometry(.18, 12, 8, 0, Math.PI*2, 0, Math.PI/2), HAIR[i % 4], 0, 1.64, -.01);
+  blob(p, .8, .8); p.userData.legs = legs; return p;
 }
 function buildClients(d){
   people.forEach(p => clientG.remove(p)); people = [];
@@ -597,163 +707,120 @@ function buildClients(d){
   const m = d && d.charges.ok ? d.charges.moments : {matin:0, midi:0, soir:0};
   const total = m.matin + m.midi + m.soir;
   if (!total){
-    for (let i = 0; i < 4; i++){ const p = person(0, true); p.position.set(1 + i*.8, 0, 6.4); p.userData = {ghost:true, ph:i}; people.push(p); clientG.add(p); }
+    for (let i = 0; i < 6; i++){ const p = person(0xB8AFA2, i); p.userData.walk = {route:i % 2, ph:i/6, lane:(i % 3 - 1)*.4}; people.push(p); clientG.add(p); }
   } else {
     const n = Math.min(total, 30), list = [];
     ["matin","midi","soir"].forEach(k => { for (let i = 0; i < Math.round(m[k] / total * n); i++) list.push(k); });
-    list.forEach((k, i) => { const p = person(MOMENT_COL[k]); p.userData = {ph:i / list.length, lane:(i % 3 - 1) * .5}; people.push(p); clientG.add(p); });
+    list.forEach((k, i) => { const p = person(MOMENT_COL[k], i); p.userData.walk = {route:2, ph:i / list.length, lane:(i % 3 - 1)*.45}; people.push(p); clientG.add(p); });
   }
   reg("clients", clientG);
 }
 
-/* --- Alertes : triangle rouge au-dessus des éléments concernés --- */
-function alertTex(){
-  const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
-  x.fillStyle = "#C8442F"; x.beginPath(); x.moveTo(64, 10); x.lineTo(120, 112); x.lineTo(8, 112); x.closePath(); x.fill();
-  x.fillStyle = "#fff"; x.font = "bold 70px Arial"; x.textAlign = "center"; x.fillText("!", 64, 102);
-  return new THREE.CanvasTexture(c);
-}
-const ALERT_MAT = new THREE.SpriteMaterial({map:alertTex(), depthTest:false});
-const ALERT_AT = {shelves:[-4.05,3.4,.1], counter:[-1.4,2.4,-2.8], tiktok:[-17.2,7.6,-3.8], overview:[0,4.6,-.6]};
+/* --- Alertes : triangle rouge flottant --- */
+const ALERT_MAT = new THREE.SpriteMaterial({map:tex((x, w, h) => { x.fillStyle = "#C8442F"; x.beginPath(); x.moveTo(64, 10); x.lineTo(120, 112); x.lineTo(8, 112); x.closePath(); x.fill();
+  x.fillStyle = "#fff"; x.font = "bold 70px Arial"; x.textAlign = "center"; x.fillText("!", 64, 102); }, 128, 128), depthTest:false});
+const ALERT_AT = {shelves:[-4.5,4.2,0], counter:[-1.6,3,-3.2], tiktok:[-21.2,10.5,-5], overview:[0,5.8,-.8], funnel:[10,6.2,5], home:[-20,7.6,20], safe:[-15,3.4,20.3]};
+const markers = {};
 function updateAlerts(){
   for (const id in ALERT_AT){
     const has = ITEMS[id] && ITEMS[id].alerts && ITEMS[id].alerts.length;
-    if (has && !markers[id]){ const s = new THREE.Sprite(ALERT_MAT); s.scale.set(.9, .9, .9); s.position.set(...ALERT_AT[id]); s.renderOrder = 10; scene.add(s); markers[id] = s; }
+    if (has && !markers[id]){ const s = new THREE.Sprite(ALERT_MAT); s.scale.set(1.1, 1.1, 1.1); s.position.set(...ALERT_AT[id]); s.renderOrder = 10; scene.add(s); markers[id] = s; }
     if (!has && markers[id]){ scene.remove(markers[id]); delete markers[id]; }
   }
 }
 function updateWorld(d){ buildClients(d); updateAlerts(); }
 
 /* =====================================================================
-   LUMIÈRE : jour / soir, et allumage progressif au chargement
+   LUMIÈRE : jour / soir, allumage progressif des fenêtres
    ===================================================================== */
 let lightMode = "auto";
 const parisHour = () => +new Intl.DateTimeFormat("fr-FR", {timeZone:"Europe/Paris", hour:"2-digit", hourCycle:"h23"}).format(new Date());
 const isNight = () => lightMode === "night" || (lightMode === "auto" && (parisHour() >= 19 || parisHour() < 7));
-document.querySelectorAll("[data-light]").forEach(b => b.onclick = () => {
-  lightMode = b.dataset.light;
-  document.querySelectorAll("[data-light]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-});
-const ORDER_LIGHT = ["overview","counter","shelves","tower","studio"];
-const hl = new THREE.Color(0xD97757);
+document.querySelectorAll("[data-light]").forEach(b => b.onclick = () => { lightMode = b.dataset.light;
+  document.querySelectorAll("[data-light]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); });
+const hl = lin(0xD97757);
 let nightK = isNight() ? 1 : 0;
 function paint(t, dt){
-  const target = isNight() ? 1 : 0;
-  nightK += (target - nightK) * Math.min(1, dt * 2.5);
+  const target = isNight() ? 1 : 0; nightK += (target - nightK) * Math.min(1, dt*2.5);
   $("app").classList.toggle("night", target === 1);
-  hemi.intensity = .5 - .3*nightK; sun.intensity = .78 - .55*nightK;
-  hemi.color.setRGB(1, .965 - .1*nightK, .925 - .05*nightK);
-  // fenêtres des bâtiments à toi : s'allument l'une après l'autre au chargement
-  ORDER_LIGHT.forEach((id, i) => {
-    const on = reduce ? 1 : Math.max(0, Math.min(1, (t - .5 - i*.35) / .6));
-    const status = ITEMS[id] ? ITEMS[id].status : "off";
-    const base = status === "off" ? .15 : status === "wait" ? .55 : 1;
-    const k = on * base * (.35 + .65*nightK) * (reduce ? 1 : .93 + .07*Math.sin(t*1.4 + i));
-    (glowMats[id] || []).forEach(m => m.emissive.setRGB(1*k, .7*k, .42*k));
-  });
-  houseWins.forEach((m, i) => { const k = nightK * ((i * 7) % 5 > 1 ? .75 : .1); m.emissive.setRGB(.95*k, .68*k, .4*k); });
-  lampMats.forEach((m, i) => { const k = Math.max(nightK, reduce ? 0 : Math.min(.35, Math.max(0, t - .3 - i*.12))); m.emissive.setRGB(1*k, .75*k, .45*k); });
-  // surbrillance
+  hemi.intensity = .95 - .65*nightK; sun.intensity = 2.3 - 1.95*nightK; fill.intensity = .35 + .25*nightK;
+  sun.color.setRGB(1, .92 - .15*nightK, .82 - .1*nightK);
+  const wake = reduce ? 1 : Math.min(1, Math.max(0, (t - .6) / 1.2));
+  const warm = (.18 + .9*nightK) * wake;
+  glassWarm.emissive.setRGB(1*warm, .62*warm, .3*warm);
+  houseGlass.forEach((m, i) => { const k = nightK * ((i * 7) % 5 > 1 ? .85 : .05) * (reduce ? 1 : Math.min(1, Math.max(0, t - .4 - i*.08))); m.emissive.setRGB(1*k, .62*k, .3*k); });
+  const lk = .2 + .9*nightK; lampMat.emissive.setRGB(lk, .75*lk, .45*lk);
   pick.forEach(m => {
-    if (m.material.emissive === undefined || (glowMats[m.userData.id] || []).includes(m.material) || lampMats.includes(m.material)) return;
+    if (!m.userData.own || !m.material.emissive) return;
     const on = m.userData.id === selected, hov = m.userData.id === hovered;
-    if (on) m.material.emissive.copy(hl).multiplyScalar(.28 * (reduce ? 1 : .75 + .25*Math.sin(t*3)));
-    else if (hov) m.material.emissive.copy(hl).multiplyScalar(.14);
+    if (on) m.material.emissive.copy(hl).multiplyScalar(.22 * (reduce ? 1 : .7 + .3*Math.sin(t*3)));
+    else if (hov) m.material.emissive.copy(hl).multiplyScalar(.12);
     else m.material.emissive.setRGB(0, 0, 0);
   });
-  for (const id in markers) markers[id].position.y = ALERT_AT[id][1] + (reduce ? 0 : Math.sin(t*2.4)*.15);
+  for (const id in markers) markers[id].position.y = ALERT_AT[id][1] + (reduce ? 0 : Math.sin(t*2.4)*.18);
 }
 
 /* =====================================================================
-   CAMÉRA, INTERACTION, BOUCLE
+   CAMÉRA, INTERACTION, ANIMATION
    ===================================================================== */
-function resize(){
-  const w = innerWidth, h = innerHeight, half = w < 700 ? 19 : 15, a = w / h;
-  renderer.setSize(w, h, false);
-  cam.left = -half*a; cam.right = half*a; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix();
-}
+function resize(){ const w = innerWidth, h = innerHeight, half = w < 700 ? 22 : 17, a = w / h;
+  renderer.setSize(w, h, false); cam.left = -half*a; cam.right = half*a; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix(); }
 addEventListener("resize", resize);
 let camAnim = null;
-function tween(target, zoom, pos){
-  const to = {t:target.clone(), z:zoom, p:pos ? pos.clone() : null};
+function tween(target, zoom, pos){ const to = {t:target.clone(), z:zoom, p:pos ? pos.clone() : null};
   if (reduce){ controls.target.copy(to.t); cam.zoom = to.z; if (to.p) cam.position.copy(to.p); cam.updateProjectionMatrix(); return; }
-  camAnim = {t0:performance.now(), fT:controls.target.clone(), fZ:cam.zoom, fP:cam.position.clone(), ...to};
-}
-function focusOn(id){
-  const g = groups[id]; if (!g || id === "trucks" || id === "clients") return;
+  camAnim = {t0:performance.now(), fT:controls.target.clone(), fZ:cam.zoom, fP:cam.position.clone(), ...to}; }
+function focusOn(id){ const g = groups[id]; if (!g || id === "trucks" || id === "clients") return;
   const c = new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3());
-  tween(c, Math.max(cam.zoom, 1.9), c.clone().add(cam.position.clone().sub(controls.target)));
-}
-function orbit(angle){
-  const off = cam.position.clone().sub(controls.target); off.applyAxisAngle(new THREE.Vector3(0,1,0), angle);
-  tween(controls.target, cam.zoom, controls.target.clone().add(off));
-}
-$("rotL").onclick = () => orbit(Math.PI/4);
-$("rotR").onclick = () => orbit(-Math.PI/4);
+  tween(c, Math.max(cam.zoom, 2.1), c.clone().add(cam.position.clone().sub(controls.target))); }
+function orbit(angle){ const off = cam.position.clone().sub(controls.target); off.applyAxisAngle(new THREE.Vector3(0,1,0), angle); tween(controls.target, cam.zoom, controls.target.clone().add(off)); }
+$("rotL").onclick = () => orbit(Math.PI/4); $("rotR").onclick = () => orbit(-Math.PI/4);
 $("zin").onclick = () => tween(controls.target, Math.min(controls.maxZoom, cam.zoom*1.3));
 $("zout").onclick = () => tween(controls.target, Math.max(controls.minZoom, cam.zoom/1.3));
 $("home").onclick = () => { closeCard(); tween(HOME.target, HOME.zoom, HOME.pos); };
 
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = $("tip");
 let hovered = null, down = null;
-function hit(e){
-  ptr.set((e.clientX/innerWidth)*2 - 1, -(e.clientY/innerHeight)*2 + 1);
-  ray.setFromCamera(ptr, cam);
-  const h = ray.intersectObjects(pick, false)[0]; return h ? h.object.userData.id : null;
-}
+function hit(e){ ptr.set((e.clientX/innerWidth)*2 - 1, -(e.clientY/innerHeight)*2 + 1); ray.setFromCamera(ptr, cam);
+  const h = ray.intersectObjects(pick, false)[0]; return h ? h.object.userData.id : null; }
 canvas.addEventListener("pointerdown", e => { down = {x:e.clientX, y:e.clientY, b:e.button}; canvas.classList.add("drag"); tip.classList.remove("on"); });
-canvas.addEventListener("pointermove", e => {
-  if (down) return;
+canvas.addEventListener("pointermove", e => { if (down) return;
   const id = hit(e); hovered = id; canvas.classList.toggle("over", !!id);
   if (id && ITEMS[id] && ITEMS[id].name){ tip.innerHTML = `${esc(ITEMS[id].name)}<span>${esc(ITEMS[id].eyebrow)}</span>`; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.add("on"); }
-  else tip.classList.remove("on");
-});
-canvas.addEventListener("pointerup", e => {
-  canvas.classList.remove("drag");
-  if (down && down.b === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6){ const id = hit(e); id ? openCard(id) : closeCard(); }
-  down = null;
-});
+  else tip.classList.remove("on"); });
+canvas.addEventListener("pointerup", e => { canvas.classList.remove("drag");
+  if (down && down.b === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6){ const id = hit(e); id ? openCard(id) : closeCard(); } down = null; });
 canvas.addEventListener("pointerleave", () => { hovered = null; tip.classList.remove("on"); });
 canvas.addEventListener("contextmenu", e => e.preventDefault());
 
-// trajet des camionnettes : boucle sur les rues, voie de droite
-const LANE = .65, A0 = ST[0] + LANE, A1 = ST[1] - LANE, loop = [[A0, A0],[A1, A0],[A1, A1],[A0, A1]];
-const seg = loop.map((p, i) => { const q = loop[(i+1)%4]; return Math.hypot(q[0]-p[0], q[1]-p[1]); }), tot = seg.reduce((a,b)=>a+b, 0);
-function onLoop(u){
-  let d = ((u % 1) + 1) % 1 * tot, i = 0; while (d > seg[i]){ d -= seg[i]; i++; }
-  const p = loop[i], q = loop[(i+1)%4], f = d/seg[i];
-  return {x:p[0] + (q[0]-p[0])*f, z:p[1] + (q[1]-p[1])*f, a:Math.atan2(-(q[1]-p[1]), q[0]-p[0])};
-}
-// chemin des clients : du trottoir vers la porte de la boutique
-const path = [[9, 9.8], [5, 7.6], [2.6, 3.2]];
-function onPath(u){ const k = u * 2, i = Math.min(1, Math.floor(k)), f = k - i, a = path[i], b = path[i+1]; return [a[0] + (b[0]-a[0])*f, a[1] + (b[1]-a[1])*f, Math.atan2(-(b[1]-a[1]), b[0]-a[0])]; }
+// camionnettes : boucle sur les rues, voie de droite
+const LANE = .8, A0 = ST[0] + LANE, A1 = ST[1] - LANE, loop = [[A0, A0],[A1, A0],[A1, A1],[A0, A1]];
+const segs = r => r.map((p, i) => { const q = r[(i+1) % r.length]; return Math.hypot(q[0]-p[0], q[1]-p[1]); });
+const loopS = segs(loop), loopT = loopS.reduce((a,b) => a+b, 0);
+function onLoop(path, s, total, u){ let d = ((u % 1) + 1) % 1 * total, i = 0; while (d > s[i]){ d -= s[i]; i++; }
+  const p = path[i], q = path[(i+1) % path.length], f = d/s[i]; return {x:p[0] + (q[0]-p[0])*f, z:p[1] + (q[1]-p[1])*f, a:Math.atan2(-(q[1]-p[1]), q[0]-p[0])}; }
+// promenades sur les trottoirs, et file des clients vers la porte de la boutique
+const routes = [[[-12.3,-12.3],[12.3,-12.3],[12.3,12.3],[-12.3,12.3]], [[-7.6,8.6],[7.6,8.6],[7.6,9.4],[-7.6,9.4]], [[11.5,11.5],[4.5,9],[2.6,3.6],[4.5,9]]]
+  .map(r => { const s = segs(r); return {r, s, t:s.reduce((a,b) => a+b, 0)}; });
 
 let last = performance.now(); const t0 = last;
 function frame(now){
   const t = (now - t0)/1000, dt = Math.min(.1, (now - last)/1000); last = now;
-  if (camAnim){
-    const p = Math.min(1, (now - camAnim.t0)/750), e = p < .5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3)/2;
-    controls.target.lerpVectors(camAnim.fT, camAnim.t, e);
-    cam.zoom = camAnim.fZ + (camAnim.z - camAnim.fZ)*e; cam.updateProjectionMatrix();
-    if (camAnim.p) cam.position.lerpVectors(camAnim.fP, camAnim.p, e);
-    if (p >= 1) camAnim = null;
-  }
-  trucks.forEach(tr => { const s = onLoop((reduce ? 0 : t*.018) + tr.userData.offset); tr.position.set(s.x, reduce ? 0 : Math.abs(Math.sin(t*10 + tr.userData.offset*9))*.02, s.z); tr.rotation.y = s.a; });
-  people.forEach(p => {
-    if (p.userData.ghost){ p.position.y = reduce ? 0 : Math.abs(Math.sin(t*1.4 + p.userData.ph))*.04; return; }
-    const u = reduce ? p.userData.ph : (t*.04 + p.userData.ph) % 1, [x, z, a] = onPath(u);
-    p.position.set(x + p.userData.lane, reduce ? 0 : Math.abs(Math.sin(t*6 + p.userData.ph*20))*.06, z); p.rotation.y = a;
-  });
-  paint(t, dt);
-  controls.update();
-  renderer.render(scene, cam);
+  if (camAnim){ const p = Math.min(1, (now - camAnim.t0)/750), e = p < .5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3)/2;
+    controls.target.lerpVectors(camAnim.fT, camAnim.t, e); cam.zoom = camAnim.fZ + (camAnim.z - camAnim.fZ)*e; cam.updateProjectionMatrix();
+    if (camAnim.p) cam.position.lerpVectors(camAnim.fP, camAnim.p, e); if (p >= 1) camAnim = null; }
+  trucks.forEach(tr => { const s = onLoop(loop, loopS, loopT, (reduce ? 0 : t*.016) + tr.userData.offset);
+    tr.position.set(s.x, .14 + (reduce ? 0 : Math.abs(Math.sin(t*10 + tr.userData.offset*9))*.015), s.z); tr.rotation.y = s.a; });
+  people.forEach(p => { const w = p.userData.walk, R = routes[w.route];
+    const s = onLoop(R.r, R.s, R.t, reduce ? w.ph : (t*(w.route === 2 ? .035 : .012) + w.ph));
+    p.position.set(s.x + (w.route ? w.lane : 0), groundTop, s.z + (w.route ? 0 : w.lane)); p.rotation.y = s.a + Math.PI/2;
+    if (!reduce) p.userData.legs.forEach((l, k) => l.rotation.x = Math.sin(t*7 + w.ph*10 + k*Math.PI)*.45); });
+  paint(t, dt); controls.update(); renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
 
 ITEMS = Object.fromEntries(ORDER.map(id => [id, {status:"off"}]));
-buildClients(null);
-resize(); cam.updateProjectionMatrix();
-requestAnimationFrame(frame);
+buildClients(null); resize(); requestAnimationFrame(frame);
 refresh(); setInterval(refresh, 60000);
 </script>
 </body>

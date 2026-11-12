@@ -20,6 +20,7 @@ const KEY = process.env.STRIPE_API_KEY;
 const PORT = Number(process.env.PORT || 3000);
 const REFRESH = Number(process.env.REFRESH_SECONDS || 60);
 const TZ = process.env.TIMEZONE || "Europe/Paris";
+const SIO_KEY = process.env.SYSTEMEIO_API_KEY;
 if (!KEY) { console.error("STRIPE_API_KEY manquante dans .env"); process.exit(1); }
 
 // --- Stripe ---
@@ -130,8 +131,72 @@ async function collect() {
     })
   ]);
 
+  const [systeme, budget] = await Promise.all([section(() => readSystemeIo(since)), section(readBudget)]);
+
   return { fetchedAt: new Date().toISOString(), periodStart: new Date(since * 1000).toISOString(),
-    refreshSeconds: REFRESH, account, charges, intents, sessions, products, balance };
+    refreshSeconds: REFRESH, account, charges, intents, sessions, products, balance, systeme, budget };
+}
+
+// --- systeme.io (lecture seule) ---
+async function sioGet(path, params = {}) {
+  if (!SIO_KEY) { const e = new Error("Clé systeme.io absente du .env"); e.status = 0; throw e; }
+  const res = await fetch(`https://api.systeme.io/api${path}?${new URLSearchParams(params)}`, {
+    headers: { "X-API-Key": SIO_KEY, Accept: "application/json" }
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) { const e = new Error(body.detail || `HTTP ${res.status}`); e.status = res.status; throw e; }
+  return body;
+}
+async function sioAll(path, max = 2000) {
+  const out = []; let startingAfter;
+  while (out.length < max) {
+    const page = await sioGet(path, { limit: 100, ...(startingAfter ? { startingAfter } : {}) });
+    const items = page.items || [];
+    out.push(...items);
+    if (!page.hasMore || !items.length) break;
+    startingAfter = items[items.length - 1].id;
+  }
+  return out;
+}
+async function readSystemeIo(since) {
+  const contacts = await sioAll("/contacts");
+  const tagNames = c => (c.tags || []).map(t => (t.name || "").toUpperCase());
+  const recent = contacts.filter(c => c.registeredAt && Date.parse(c.registeredAt) / 1000 >= since);
+  const clients = contacts.filter(c => tagNames(c).includes("CLIENT"));
+  const optional = async (p) => { try { const r = await sioGet(p, { limit: 100 }); return (r.items || []).length; } catch { return null; } };
+  const [courses, funnels] = await Promise.all([optional("/school/courses"), optional("/funnels")]);
+  return { contacts: contacts.length, newContacts: recent.length, clients: clients.length,
+    newClients: clients.filter(c => recent.includes(c)).length, courses, funnels };
+}
+
+// --- Budget perso : data/budget.json (jamais envoyé sur GitHub) ---
+async function readBudget() {
+  const b = JSON.parse(await readFile(join(ROOT, "data", "budget.json"), "utf8"));
+  const known = Object.entries(b.charges || {}).filter(([, v]) => typeof v === "number");
+  const missing = Object.entries(b.charges || {}).filter(([, v]) => typeof v !== "number").map(([k]) => k);
+  const chargesTotal = missing.length ? null : known.reduce((s, [, v]) => s + v, 0);
+  // Prochaine paie (heure de Paris)
+  const today = new Date(new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date()) + "T12:00:00");
+  let pay = new Date(today.getFullYear(), today.getMonth(), b.jourDePaie, 12);
+  if (pay < today) pay = new Date(today.getFullYear(), today.getMonth() + 1, b.jourDePaie, 12);
+  const daysToPay = Math.round((pay - today) / 86400000);
+  // Projection mois par mois jusqu'à finProjection, si toutes les charges sont connues
+  let projection = null;
+  if (chargesTotal !== null) {
+    projection = []; let compte = b.compteCourant, epargne = b.epargne;
+    const [ey, em] = b.finProjection.split("-").map(Number);
+    for (let d = new Date(pay); d.getFullYear() * 12 + d.getMonth() <= ey * 12 + em - 1; d = new Date(d.getFullYear(), d.getMonth() + 1, b.jourDePaie, 12)) {
+      compte += b.salaire - chargesTotal;
+      let used = 0;
+      if (compte < 0) { used = Math.min(epargne, -compte); epargne -= used; compte += used; }
+      projection.push({ mois: d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), salaire: b.salaire, charges: chargesTotal,
+        reste: b.salaire - chargesTotal, epargneUtilisee: used, compte, epargne });
+    }
+  }
+  return { source: b.source, compteCourant: b.compteCourant, epargne: b.epargne, salaire: b.salaire,
+    jourDePaie: b.jourDePaie, nextPay: pay.toISOString().slice(0, 10), daysToPay,
+    charges: Object.fromEntries(known), missing, chargesTotal,
+    resteAVivre: chargesTotal === null ? null : b.salaire - chargesTotal, projection };
 }
 function mostCommon(arr) {
   const m = new Map(); arr.forEach(x => m.set(x, (m.get(x) || 0) + 1));

@@ -1,0 +1,9 @@
+{
+  "source": "Où viennent ces chiffres",
+  "compteCourant": 0,
+  "epargne": 0,
+  "salaire": 0,
+  "jourDePaie": 22,
+  "finProjection": "2027-08",
+  "charges": { "Logement": 0, "Assurances": 0, "Téléphone": 0, "Internet": 0, "Essence": 0, "Alimentation": 0, "Loisirs": 0, "Crédits": 0, "Autres prélèvements": 0 }
+}
