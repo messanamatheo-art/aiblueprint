@@ -33,7 +33,7 @@ button,select{font:inherit;color:inherit}
 #summary{left:max(14px,env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));padding:12px 14px;max-width:min(480px,calc(100% - 28px))}
 .s-head{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px}
 .s-dot{width:9px;height:9px;border-radius:2px;background:var(--accent)}
-.s-range{color:var(--muted);font-size:11.5px;margin:1px 0 9px 16px}
+.s-range{color:var(--muted);font-size:11.5px;margin:0 0 8px}
 .s-kpis{display:grid;grid-template-columns:repeat(4,auto);gap:6px}
 .s-kpi{border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:var(--solid);min-width:0}
 .s-kpi .l{font-size:10.5px;color:var(--muted);white-space:nowrap}
@@ -113,7 +113,6 @@ button,select{font:inherit;color:inherit}
   <canvas id="gl" aria-label="Ville 3D de Nuvéa. Le menu « Tous les éléments » ouvre les mêmes cartes au clavier."></canvas>
 
   <section class="panel" id="summary" aria-label="Résumé">
-    <div class="s-head"><span class="s-dot"></span>Nuvéa · 30 derniers jours</div>
     <div class="s-range" id="s-range">Lecture des données…</div>
     <div class="s-kpis">
       <div class="s-kpi"><div class="l">Chiffre d'affaires</div><div class="v" id="k-ca">—</div></div>
